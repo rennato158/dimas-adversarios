@@ -14,10 +14,32 @@
   <link rel="apple-touch-icon" href="icone-180.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Michroma&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Michroma&family=Open+Sans:wght@400;600;700&family=Saira+Condensed:wght@600;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="estilo.css">
 </head>
-<body>
+<body class="bloqueado">
+  <div class="abertura" id="abertura" role="status" aria-label="Carregando DIMAS Adversários">
+    <img class="abertura-logo" src="logo-dimas.png" alt="DIMAS — Departamento Integrado de Mercado e Análise Sistemática">
+    <div class="abertura-titulo"><span>DIMAS</span><b>ADVERSÁRIOS</b><i></i></div>
+    <p class="abertura-sub">Análise de adversários do Ceará Sporting Club</p>
+    <div class="abertura-barra"><i id="abertura-progresso"></i></div>
+    <p class="abertura-pct" id="abertura-pct">0%</p>
+  </div>
+
+  <div class="entrada" id="entrada" hidden>
+    <form id="form-entrada" novalidate>
+      <img class="abertura-logo" src="logo-dimas.png" alt="DIMAS">
+      <div class="abertura-titulo pequeno"><span>DIMAS</span><b>ADVERSÁRIOS</b><i></i></div>
+      <label for="entrada-email">E-mail</label>
+      <input id="entrada-email" type="email" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" required>
+      <label for="entrada-senha">Senha</label>
+      <input id="entrada-senha" type="password" autocomplete="current-password" required>
+      <p class="entrada-erro" id="entrada-erro" role="alert"></p>
+      <button class="botao" type="submit" id="entrada-botao">Entrar</button>
+      <p class="entrada-nota">Acesso restrito à comissão técnica. Peça seu acesso ao DIMAS.</p>
+    </form>
+  </div>
+
   <header class="topo">
     <a class="icone" id="voltar" href="#/" aria-label="Voltar" hidden>
       <svg viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></svg>
@@ -28,6 +50,9 @@
     </a>
     <button class="icone" id="abrir-busca" aria-label="Buscar atleta ou equipe">
       <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+    </button>
+    <button class="icone" id="sair" aria-label="Sair da conta" hidden>
+      <svg viewBox="0 0 24 24"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 16l4-4-4-4M14 12H4"/></svg>
     </button>
     <button class="icone" id="atualizar" aria-label="Atualizar dados">
       <svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.3-4.3L4 8.5M4 4v4.5h4.5M4 13a8 8 0 0 0 14.3 4.3L20 15.500M20 20v-4.500h-4.500"/></svg>

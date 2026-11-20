@@ -146,6 +146,7 @@
 
   /* ---------- rotas ---------- */
   function rota() {
+    if (document.body.classList.contains("bloqueado")) return; // nada é desenhado antes do login
     const partes = location.hash.replace(/^#\/?/, "").split("/").map(decodeURIComponent);
     const voltar = $("#voltar");
     fecharCamadas();
@@ -234,7 +235,42 @@
   let larguraEstreita = window.matchMedia("(max-width: 899px)");
   larguraEstreita.addEventListener("change", rota);
 
-  rota();
-  atualizar(false);
+  /* ---------- abertura (3 s) e login ---------- */
+  function abrirApp() {
+    document.body.classList.remove("bloqueado");
+    $("#entrada").hidden = true;
+    $("#sair").hidden = !(DIMAS.conectado() && DIMAS.sessao());
+    rota();
+    atualizar(false);
+  }
+  function pedirLogin() {
+    $("#entrada").hidden = false;
+    setTimeout(() => $("#entrada-email").focus(), 50);
+  }
+  $("#form-entrada").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const email = $("#entrada-email").value.trim(), senha = $("#entrada-senha").value, erro = $("#entrada-erro"), botao = $("#entrada-botao");
+    if (!email || !senha) { erro.textContent = "Informe o e-mail e a senha."; return; }
+    erro.textContent = ""; botao.disabled = true; botao.textContent = "Entrando…";
+    try { await DIMAS.entrar(email, senha); $("#entrada-senha").value = ""; abrirApp(); }
+    catch (e) { erro.textContent = e.message === "Failed to fetch" ? "Sem internet. Conecte-se para entrar pela primeira vez." : e.message; }
+    finally { botao.disabled = false; botao.textContent = "Entrar"; }
+  });
+  $("#sair").addEventListener("click", () => {
+    if (!confirm("Sair da conta neste aparelho?")) return;
+    DIMAS.sair(); document.body.classList.add("bloqueado"); tela.innerHTML = ""; $("#sair").hidden = true; pedirLogin();
+  });
+  (function abertura() {
+    const DURACAO = 3000, inicio = performance.now(), barra = $("#abertura-progresso"), pct = $("#abertura-pct"), caixa = $("#abertura");
+    const suave = (t) => 1 - Math.pow(1 - t, 2.2);
+    function passo(agora) {
+      const t = Math.min(1, (agora - inicio) / DURACAO), v = Math.round(suave(t) * 100);
+      barra.style.width = v + "%"; pct.textContent = v + "%";
+      if (t < 1) return requestAnimationFrame(passo);
+      caixa.classList.add("saindo");
+      setTimeout(() => { caixa.remove(); (!DIMAS.conectado() || DIMAS.sessao()) ? abrirApp() : pedirLogin(); }, 350);
+    }
+    requestAnimationFrame(passo);
+  })();
   if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("sw.js").catch(() => {});
 })();

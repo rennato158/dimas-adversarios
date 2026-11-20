@@ -195,8 +195,8 @@ window.DIMAS = (function () {
     if (!r.ok) { const cod = (j.error && (j.error.status || j.error.message)) || "HTTP " + r.status; const e = new Error(ERROS[cod] || cod); e.codigo = cod; throw e; }
     return j;
   }
-  function sessao() { try { return JSON.parse(sessionStorage.getItem(CHAVES.sessao) || "null"); } catch (e) { return null; } }
-  function guardarSessao(s) { try { s ? sessionStorage.setItem(CHAVES.sessao, JSON.stringify(s)) : sessionStorage.removeItem(CHAVES.sessao); } catch (e) {} }
+  function sessao() { try { return JSON.parse(localStorage.getItem(CHAVES.sessao) || "null"); } catch (e) { return null; } }
+  function guardarSessao(s) { try { s ? localStorage.setItem(CHAVES.sessao, JSON.stringify(s)) : localStorage.removeItem(CHAVES.sessao); } catch (e) {} }
   async function entrar(email, senha) {
     const j = await pedir("https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=" + encodeURIComponent(firebase().apiKey), {
       method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password: senha, returnSecureToken: true }),
@@ -235,7 +235,7 @@ window.DIMAS = (function () {
     return window.DIMAS_INSTANTANEO || { publicadoEm: "", origem: "vazio", abas: {} };
   }
   async function buscarPublicado() {
-    const p = await lerDoc("publicado", false);
+    const p = await lerDoc("publicado", !!sessao()); // com login, envia a credencial (funciona com leitura aberta ou restrita)
     if (!p || !p.abas) throw new Error("Resposta inesperada da base.");
     guarda.gravar(CHAVES.dados, JSON.stringify(p));
     return p;
