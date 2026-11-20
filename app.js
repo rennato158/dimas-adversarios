@@ -26,13 +26,14 @@
   /* ---------- peças ---------- */
   const iniciais = (nome) => String(nome).trim().split(/\s+/).filter(Boolean).map((p) => p[0]).slice(0, 2).join("").toUpperCase();
   function avatar(a, largura) {
-    if (/^foto:/.test(a.imagem || "")) return '<span class="avatar">' + esc(iniciais(a.nome)) + '<img alt="" hidden data-foto="' + esc(a.imagem.slice(5)) + '" data-elenco="' + esc(a.equipe) + '"></span>';
+    if (/^foto:/.test(a.imagem || "")) return '<span class="avatar">' + esc(iniciais(a.nome)) + '<img alt="" hidden data-foto="' + esc(a.imagem.slice(5)) + '" data-doc="' + esc("fotos-" + DIMAS.slug(a.equipe)) + '"></span>';
     const src = imagem(a.imagem, largura || 160);
     return '<span class="avatar">' + esc(iniciais(a.nome)) + (src ? '<img loading="lazy" alt="" src="' + esc(src) + '" onerror="imgFalhou(this)">' : "") + "</span>";
   }
   function arte(url, nome, largura) {
-    const src = imagem(url, largura || 300);
     const sigla = '<span class="sigla">' + esc(iniciais(nome)) + "</span>";
+    if (/^escudo:/.test(url || "")) return '<img alt="" hidden data-foto="' + esc(String(url).slice(7)) + '" data-doc="fotos-escudos">' + sigla; // escudo guardado na base
+    const src = imagem(url, largura || 300);
     return src ? '<img loading="lazy" alt="" src="' + esc(src) + '" onerror="imgFalhou(this)" data-reserva="' + esc(sigla) + '">' : sigla;
   }
   const atletasDa = (equipe) => dados.atletas.filter((a) => a.equipeChave === equipe.elencoChave).sort((a, b) => a.ordem - b.ordem || a.linha - b.linha);
@@ -224,11 +225,16 @@
   const fotosPorElenco = {};
   function pintarFotos() {
     const pendentes = [...document.querySelectorAll("img[data-foto][hidden]")];
-    const elencos = [...new Set(pendentes.map((i) => i.dataset.elenco))];
-    for (const elenco of elencos) {
-      const doc = "fotos-" + DIMAS.slug(elenco);
+    for (const doc of new Set(pendentes.map((i) => i.dataset.doc))) {
+      if (!doc) continue;
       if (!fotosPorElenco[doc]) fotosPorElenco[doc] = DIMAS.lerDoc(doc, true).then((d) => (d && d.fotos) || {}).catch(() => { delete fotosPorElenco[doc]; return {}; });
-      fotosPorElenco[doc].then((fotos) => { document.querySelectorAll("img[data-foto][hidden]").forEach((img) => { if (img.dataset.elenco === elenco && fotos[img.dataset.foto]) { img.src = fotos[img.dataset.foto]; img.hidden = false; } }); });
+      fotosPorElenco[doc].then((fotos) => {
+        document.querySelectorAll("img[data-foto][hidden]").forEach((img) => {
+          if (img.dataset.doc !== doc || !fotos[img.dataset.foto]) return;
+          img.src = fotos[img.dataset.foto]; img.hidden = false;
+          const prox = img.nextElementSibling; if (prox && prox.classList.contains("sigla")) prox.remove();
+        });
+      });
     }
   }
   let fotosT; const observarFotos = new MutationObserver(() => { clearTimeout(fotosT); fotosT = setTimeout(pintarFotos, 60); });
