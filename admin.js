@@ -396,7 +396,7 @@
       await DIMAS.entrar(email, senha); $("#fb-senha").value = "";
       let msg = "Conectado como " + email + ".";
       if ((await sincronizar(true)) === "vazia") msg += " A base online está vazia: aperte Atualizar app para enviar os dados pela primeira vez.";
-      desenhar(); retorno("ok", msg);
+      desenhar(); carregarAcesso(); retorno("ok", msg);
     } catch (e) { DIMAS.sair(); desenhar(); retorno("erro", "Não foi possível conectar: " + e.message); }
   }
 
@@ -418,6 +418,76 @@
     };
     leitor.readAsText(arquivo);
   }
+
+  /* ---------- acesso de leitores ---------- */
+  let usuariosAcesso = [];
+  function lerListaEmails(texto) {
+    const saida = [], vistos = new Set();
+    let itens = null;
+    try { const j = JSON.parse(texto); itens = Array.isArray(j) ? j : Array.isArray(j.usuarios) ? j.usuarios : null; } catch (e) {}
+    if (itens) itens.forEach((o) => { const email = DIMAS.normalizarEmail(typeof o === "string" ? o : o.email || o["e-mail"]); const nome = typeof o === "object" ? String(o.nome || o.name || "").trim() : ""; if (/^\S+@\S+\.\S+$/.test(email) && !vistos.has(email)) { vistos.add(email); saida.push({ email, nome }); } });
+    else String(texto || "").split(/\r?\n/).forEach((linha) => {
+      const m = linha.match(/[\w.+-]+@[\w-]+(\.[\w-]+)+/); if (!m) return;
+      const email = DIMAS.normalizarEmail(m[0]); if (vistos.has(email)) return;
+      const nome = linha.replace(m[0], "").replace(/[;,\t"<>]+/g, " ").replace(/\s+/g, " ").trim();
+      vistos.add(email); saida.push({ email, nome: /^(nome|e-?mail)$/i.test(nome) ? "" : nome });
+    });
+    return saida;
+  }
+  function desenharAcesso() {
+    const sn = (v) => esc(v || "—");
+    $("#tabela-acesso").innerHTML = "<thead><tr><th>Nome</th><th>E-mail</th><th>Liberado em</th><th>Situação</th><th></th></tr></thead><tbody>" +
+      (usuariosAcesso.length ? usuariosAcesso.map((u, i) => "<tr><td>" + sn(u.nome) + "</td><td>" + esc(u.email) + "</td><td>" + esc(dataHora(u.convidadoEm)) + "</td><td>" + sn(u.situacao) +
+        '</td><td style="text-align:right"><button class="botao contorno pequeno" data-reenviar="' + i + '">Reenviar convite</button> <button class="botao perigo pequeno" data-remover-acesso="' + i + '">Remover</button></td></tr>').join("")
+        : '<tr><td colspan="5" class="suave">Nenhum usuário liberado ainda. Você, como administrador, sempre tem acesso.</td></tr>') + "</tbody>";
+    $("#resumo-acesso").textContent = usuariosAcesso.length + " usuário(s) com acesso de visualização.";
+  }
+  async function carregarAcesso() {
+    if (!logado()) { $("#tabela-acesso").innerHTML = ""; $("#resumo-acesso").textContent = "Entre na base online para gerenciar o acesso."; return; }
+    try { usuariosAcesso = await DIMAS.lerAcesso(); desenharAcesso(); } catch (e) { $("#resumo-acesso").textContent = "Não foi possível ler a lista de acesso: " + e.message; }
+  }
+  async function convidarLista() {
+    if (!logado()) { retorno("info", "Entre na base online para liberar acessos."); $("#conexao").scrollIntoView({ behavior: "smooth" }); return; }
+    const novos = lerListaEmails($("#lista-acesso").value);
+    if (!novos.length) { retorno("erro", "Não encontrei e-mails na lista."); return; }
+    const jaTem = new Set(usuariosAcesso.map((u) => u.email)), adicionar = novos.filter((u) => !jaTem.has(u.email));
+    if (!adicionar.length) { retorno("info", "Todos esses e-mails já têm acesso."); return; }
+    if (!confirm("Liberar acesso de visualização para " + adicionar.length + " pessoa(s) e enviar o e-mail de criação de senha?")) return;
+    const botao = $("#convidar"); botao.disabled = true;
+    const falhas = [], existentes = [];
+    try {
+      for (const [i, u] of adicionar.entries()) {
+        botao.textContent = "Convidando " + (i + 1) + " de " + adicionar.length + "…";
+        try { const s = await DIMAS.convidar(u.email); if (s === "conta já existia") existentes.push(u.email); usuariosAcesso.push({ email: u.email, nome: u.nome, convidadoEm: new Date().toISOString(), situacao: s }); }
+        catch (e) { falhas.push(u.email + " (" + e.message + ")"); }
+        await new Promise((r) => setTimeout(r, 400));
+      }
+      await DIMAS.gravarAcesso(usuariosAcesso);
+      $("#lista-acesso").value = ""; desenharAcesso();
+      retorno(falhas.length ? "erro" : "ok", (adicionar.length - falhas.length) + " acesso(s) liberado(s) e convite(s) enviado(s)." +
+        (existentes.length ? "\nJá tinham conta (confira se são mesmo dessas pessoas): " + existentes.join(", ") : "") + (falhas.length ? "\nFalharam: " + falhas.join("; ") : ""));
+    } catch (e) { retorno("erro", "Não foi possível gravar a lista de acesso: " + e.message); }
+    finally { botao.disabled = false; botao.textContent = "Liberar acesso e enviar convites"; }
+  }
+  $("#convidar").addEventListener("click", convidarLista);
+  $("#importar-acesso").addEventListener("click", () => $("#arquivo-acesso").click());
+  $("#arquivo-acesso").addEventListener("change", (ev) => {
+    const f = ev.target.files[0]; ev.target.value = ""; if (!f) return;
+    const r = new FileReader(); r.onload = () => { const l = lerListaEmails(r.result); $("#lista-acesso").value = l.map((u) => (u.nome ? u.nome + "; " : "") + u.email).join("\n"); retorno("info", l.length + " e-mail(s) lidos do arquivo. Confira e aperte Liberar acesso e enviar convites."); }; r.readAsText(f);
+  });
+  $("#tabela-acesso").addEventListener("click", async (ev) => {
+    const b = ev.target.closest("[data-reenviar],[data-remover-acesso]"); if (!b) return;
+    if (b.dataset.reenviar) {
+      const u = usuariosAcesso[Number(b.dataset.reenviar)];
+      try { await DIMAS.enviarDefinicaoSenha(u.email); retorno("ok", "Convite reenviado para " + u.email + "."); } catch (e) { retorno("erro", "Não foi possível reenviar: " + e.message); }
+    } else {
+      const i = Number(b.dataset.removerAcesso), u = usuariosAcesso[i];
+      if (!confirm("Remover o acesso de " + u.email + "? A pessoa deixa de ver o app imediatamente.")) return;
+      const antes = usuariosAcesso.slice(); usuariosAcesso.splice(i, 1);
+      try { await DIMAS.gravarAcesso(usuariosAcesso); desenharAcesso(); retorno("ok", "Acesso de " + u.email + " removido."); }
+      catch (e) { usuariosAcesso = antes; retorno("erro", "Não foi possível remover: " + e.message); }
+    }
+  });
 
   /* ---------- eventos ---------- */
   document.querySelectorAll("[data-aba]").forEach((b) => b.addEventListener("click", () => {
@@ -443,4 +513,5 @@
   if (DIMAS.sessao()) $("#fb-email").value = DIMAS.sessao().email;
   desenhar();
   if (logado()) sincronizar(false).then(desenhar).catch((e) => retorno("erro", "Não foi possível ler a base online: " + e.message));
+  carregarAcesso();
 })();
