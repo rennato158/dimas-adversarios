@@ -32,7 +32,7 @@
     const sigla = '<span class="sigla">' + esc(iniciais(nome)) + "</span>";
     return src ? '<img loading="lazy" alt="" src="' + esc(src) + '" onerror="imgFalhou(this)" data-reserva="' + esc(sigla) + '">' : sigla;
   }
-  const atletasDa = (equipe) => dados.atletas.filter((a) => a.equipeChave === chave(equipe.nome)).sort((a, b) => a.ordem - b.ordem || a.linha - b.linha);
+  const atletasDa = (equipe) => dados.atletas.filter((a) => a.equipeChave === equipe.elencoChave).sort((a, b) => a.ordem - b.ordem || a.linha - b.linha);
   const plural = (n, um, varios) => n + " " + (n === 1 ? um : varios);
   const linhaAtleta = (a) => [a.idade ? a.idade + " anos" : "", a.estatura, a.pe].filter(Boolean).join(" · ");
 
@@ -181,7 +181,7 @@
     const atletas = dados.atletas.filter((a) => chave(a.nome).includes(t) || chave(a.funcao) === t).slice(0, 40);
     const linhaE = (e) => '<a class="atleta" href="#/e/' + encodeURIComponent(e.id) + '"><span class="avatar" style="border-radius:8px;background:none">' + arte(e.imagem, e.nome, 120) + '</span><span class="txt"><b>' + esc(e.nome) + "</b><span>" + esc(e.competicao) + "</span></span>" + SETA + "</a>";
     const linhaA = (a) => {
-      const e = dados.equipes.find((x) => chave(x.nome) === a.equipeChave);
+      const e = dados.equipes.find((x) => x.elencoChave === a.equipeChave);
       return e ? '<a class="atleta" href="#/e/' + encodeURIComponent(e.id) + "/" + encodeURIComponent(a.id) + '">' + avatar(a, 120) + '<span class="txt"><b>' + esc(a.nome) + "</b><span>" + esc(a.funcao + " · " + a.equipe) + "</span></span>" + SETA + "</a>" : "";
     };
     caixa.innerHTML = (equipes.length ? '<h3 class="secao">Equipes</h3><div class="lista">' + equipes.map(linhaE).join("") + "</div>" : "") +
