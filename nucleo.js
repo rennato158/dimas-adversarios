@@ -189,7 +189,7 @@ window.DIMAS = (function () {
   const conectado = () => { const f = firebase(); return !!(f.apiKey && f.projectId); };
   const urlDoc = (nome) => { const f = firebase(); return "https://firestore.googleapis.com/v1/projects/" + encodeURIComponent(f.projectId) + "/databases/(default)/documents/dimas/" + nome + "?key=" + encodeURIComponent(f.apiKey); };
 
-  const ERROS = { UNAUTHENTICATED: "Sua sessão expirou. Saia e entre de novo.", INVALID_LOGIN_CREDENTIALS: "E-mail ou senha incorretos.", INVALID_PASSWORD: "E-mail ou senha incorretos.", EMAIL_NOT_FOUND: "E-mail ou senha incorretos.", PERMISSION_DENIED: "Sua conta não tem permissão para isso.", NOT_FOUND: "Nada publicado ainda.", TOO_MANY_ATTEMPTS_TRY_LATER: "Muitas tentativas. Tente de novo em alguns minutos." };
+  const ERROS = { UNAUTHENTICATED: "Sua sessão expirou. Saia e entre de novo.", INVALID_LOGIN_CREDENTIALS: "E-mail ou senha incorretos.", INVALID_PASSWORD: "E-mail ou senha incorretos.", EMAIL_NOT_FOUND: "E-mail ou senha incorretos.", PERMISSION_DENIED: "Sua conta não tem permissão para isso.", NOT_FOUND: "Nada publicado ainda.", TOO_MANY_ATTEMPTS_TRY_LATER: "Muitas tentativas. Tente de novo em alguns minutos.", ADMIN_ONLY_OPERATION: "A criação de contas está desligada no Firebase.", INVALID_EMAIL: "E-mail inválido.", MISSING_EMAIL: "Informe o e-mail." };
   async function pedir(url, opcoes) {
     const r = await fetch(url, opcoes);
     const j = await r.json().catch(() => ({}));
@@ -229,6 +229,41 @@ window.DIMAS = (function () {
     });
   }
 
+  /* ---------- acesso de leitores (lista de e-mails liberados, gravada em dimas/acesso) ---------- */
+  const normalizarEmail = (e) => String(e || "").trim().toLowerCase();
+  async function lerAcesso() {
+    try { const d = await lerDoc("acesso", true); return Array.isArray(d.usuarios) ? d.usuarios : []; }
+    catch (e) { if (e.codigo === "NOT_FOUND" || e.message === "Documento vazio.") return []; throw e; }
+  }
+  async function gravarAcesso(usuarios) {
+    const emails = [...new Set(usuarios.map((u) => normalizarEmail(u.email)).filter(Boolean))];
+    await pedir(urlDoc("acesso"), {
+      method: "PATCH", headers: { "Content-Type": "application/json", Authorization: "Bearer " + (await token()) },
+      body: JSON.stringify({ fields: {
+        json: { stringValue: JSON.stringify({ usuarios }) },
+        emails: { arrayValue: { values: emails.map((e) => ({ stringValue: e })) } }, // lido pelas regras de segurança
+        atualizadoEm: { timestampValue: new Date().toISOString() },
+      } }),
+    });
+  }
+  const urlAuth = (metodo) => "https://identitytoolkit.googleapis.com/v1/accounts:" + metodo + "?key=" + encodeURIComponent(firebase().apiKey);
+  async function enviarDefinicaoSenha(email) {
+    await pedir(urlAuth("sendOobCode"), { method: "POST", headers: { "Content-Type": "application/json", "X-Firebase-Locale": "pt-BR" },
+      body: JSON.stringify({ requestType: "PASSWORD_RESET", email: normalizarEmail(email) }) });
+  }
+  /* Cria a conta com uma senha aleatória que ninguém conhece e envia o e-mail para a pessoa definir a dela. */
+  async function convidar(email) {
+    const bytes = crypto.getRandomValues(new Uint8Array(24));
+    const senha = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("") + "Aa1!";
+    let situacao = "convidado";
+    try {
+      await pedir(urlAuth("signUp"), { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: normalizarEmail(email), password: senha, returnSecureToken: false }) });
+    } catch (e) { if (e.codigo === "EMAIL_EXISTS") situacao = "conta já existia"; else throw e; }
+    await enviarDefinicaoSenha(email);
+    return situacao;
+  }
+
   /* ---------- carga no app ---------- */
   function pacoteLocal() {
     const txt = guarda.ler(CHAVES.dados);
@@ -252,6 +287,6 @@ window.DIMAS = (function () {
   return {
     CHAVES, guarda, chave, slug, esc, semAcento, driveId, youtubeId, imagem, midia, FUNCOES, ordemDa, idadeDe, normalizar,
     linhaSofa, lerElencoColado, mesclarElenco, firebase, definirFirebase, conectado, entrar, sair, sessao, lerDoc, gravarDoc,
-    pacoteLocal, buscarPublicado, dataHora,
+    pacoteLocal, buscarPublicado, dataHora, normalizarEmail, lerAcesso, gravarAcesso, convidar, enviarDefinicaoSenha,
   };
 })();
