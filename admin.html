@@ -154,6 +154,20 @@ service cloud.firestore {
       <p class="suave" id="resumo-tabela" style="margin:10px 0 0;font-size:14px"></p>
     </section>
 
+    <section class="painel" id="acesso">
+      <h2>Acesso ao app (somente visualização)</h2>
+      <p class="suave" style="margin:0 0 10px">Quem estiver nesta lista entra no app com o próprio e-mail e só visualiza. Ao importar, cada pessoa recebe um e-mail para criar a senha.</p>
+      <label for="lista-acesso">Cole os e-mails (um por linha; opcional: <code>Nome; e-mail</code>) ou importe um arquivo .csv, .txt ou .json</label>
+      <textarea id="lista-acesso" rows="4" placeholder="Fulano de Tal; fulano@exemplo.com&#10;ciclano@exemplo.com"></textarea>
+      <div class="linha-botoes">
+        <button class="botao" id="convidar">Liberar acesso e enviar convites</button>
+        <button class="botao contorno" id="importar-acesso">Importar arquivo</button>
+        <input type="file" id="arquivo-acesso" accept=".csv,.txt,.json,text/plain,text/csv,application/json" hidden>
+      </div>
+      <div class="rolagem" style="margin-top:14px;max-height:360px"><table id="tabela-acesso"></table></div>
+      <p class="suave" id="resumo-acesso" style="margin:10px 0 0;font-size:14px"></p>
+    </section>
+
     <section class="painel">
       <h2>Pendências de cadastro</h2>
       <ul class="pendencias" id="pendencias"></ul>
