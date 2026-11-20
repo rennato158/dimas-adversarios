@@ -246,3 +246,9 @@ button.link { color: var(--roxo-claro); text-decoration: underline; font-weight:
 .editor textarea { resize: vertical; line-height: 1.45; }
 .editor-rodape { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; margin-top: 18px; }
 .editor .botao[disabled] { opacity: 0.6; pointer-events: none; }
+
+/* ---------- janela de confirmação ---------- */
+dialog.confirmacao { width: min(420px, calc(100vw - 32px)); background: var(--painel); color: var(--texto); border: 1px solid var(--linha); border-radius: var(--raio); padding: 22px; }
+dialog.confirmacao::backdrop { background: rgba(0, 0, 0, 0.65); }
+dialog.confirmacao p { margin: 0 0 18px; line-height: 1.5; }
+.confirmacao-botoes { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
