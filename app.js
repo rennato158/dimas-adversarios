@@ -370,5 +370,12 @@ $("#sair").addEventListener("click", async () => {
     }
     requestAnimationFrame(passo);
   })();
-  if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) navigator.serviceWorker.register("sw.js").catch(() => {});
+  if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
+    // Quando sai uma versão nova do app, o aparelho troca sozinho e recarrega uma vez.
+    const tinhaVersao = !!navigator.serviceWorker.controller; let recarregou = false;
+    navigator.serviceWorker.addEventListener("controllerchange", () => { if (tinhaVersao && !recarregou) { recarregou = true; location.reload(); } });
+    navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then((reg) => {
+      document.addEventListener("visibilitychange", () => { if (!document.hidden) reg.update().catch(() => {}); });
+    }).catch(() => {});
+  }
 })();
