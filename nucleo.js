@@ -189,7 +189,7 @@ window.DIMAS = (function () {
   const conectado = () => { const f = firebase(); return !!(f.apiKey && f.projectId); };
   const urlDoc = (nome) => { const f = firebase(); return "https://firestore.googleapis.com/v1/projects/" + encodeURIComponent(f.projectId) + "/databases/(default)/documents/dimas/" + nome + "?key=" + encodeURIComponent(f.apiKey); };
 
-  const ERROS = { INVALID_LOGIN_CREDENTIALS: "E-mail ou senha incorretos.", INVALID_PASSWORD: "E-mail ou senha incorretos.", EMAIL_NOT_FOUND: "E-mail ou senha incorretos.", PERMISSION_DENIED: "Sem permissão. Confira as regras do Firestore e o e-mail do administrador.", NOT_FOUND: "Nada publicado ainda.", TOO_MANY_ATTEMPTS_TRY_LATER: "Muitas tentativas. Tente de novo em alguns minutos." };
+  const ERROS = { UNAUTHENTICATED: "Sua sessão expirou. Saia e entre de novo.", INVALID_LOGIN_CREDENTIALS: "E-mail ou senha incorretos.", INVALID_PASSWORD: "E-mail ou senha incorretos.", EMAIL_NOT_FOUND: "E-mail ou senha incorretos.", PERMISSION_DENIED: "Sua conta não tem permissão para isso.", NOT_FOUND: "Nada publicado ainda.", TOO_MANY_ATTEMPTS_TRY_LATER: "Muitas tentativas. Tente de novo em alguns minutos." };
   async function pedir(url, opcoes) {
     const r = await fetch(url, opcoes);
     const j = await r.json().catch(() => ({}));
