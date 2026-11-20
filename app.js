@@ -4,7 +4,9 @@
   const $ = (s, r) => (r || document).querySelector(s);
   const tela = $("#tela");
   let dados = DIMAS.normalizar(DIMAS.pacoteLocal());
-  const estado = { equipeNaTela: "", filtro: "" };
+  const estado = { equipeNaTela: "", filtro: "", atleta: null, equipe: null };
+  const ehAdmin = () => { const s = DIMAS.sessao(); const lista = ((window.DIMAS_CONFIG || {}).ADMINS || []).map((x) => String(x).toLowerCase()); return !!s && lista.includes(String(s.email || "").toLowerCase()); };
+  const IC_LAPIS = '<svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/></svg>';
 
   const SETA = '<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>';
   const IC_VIDEO = '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.500v5l4.500-2.500z"/></svg>';
@@ -100,14 +102,17 @@
     const v = midia(a.video);
     let video = "";
     if (v && v.embed) video = '<section class="bloco"><h3>Vídeo</h3><div class="video"><button data-tocar="' + esc(v.embed) + '"><i><svg viewBox="0 0 24 24"><path d="M7 4.500v15l12-7.500z"/></svg></i>Assistir vídeo</button></div></section>';
-    else if (v) video = '<a class="botao contorno" style="margin-top:12px" target="_blank" rel="noopener" href="' + esc(v.externo) + '">' + IC_VIDEO + "Abrir vídeo</a>";
+    else if (v) video = '<section class="bloco"><h3>Vídeo</h3><div class="video-vazio"><a class="botao" target="_blank" rel="noopener" href="' + esc(v.externo) + '">' + IC_VIDEO + "Abrir vídeo</a></div></section>";
+    else video = '<section class="bloco"><h3>Vídeo</h3><div class="video-vazio"><span>Nenhum vídeo cadastrado.</span>' + (ehAdmin() ? '<button class="botao contorno" data-editar="Video">' + IC_VIDEO + "Adicionar vídeo</button>" : "") + "</div></section>";
+    estado.atleta = a; estado.equipe = equipe;
     const ogol = midia(a.ogol);
-    const conteudo = video + bloco("Características individuais", a.analise) + bloco("Pontos fortes", a.forte, "forte") + bloco("Pontos vulneráveis", a.vulneravel, "fraco");
+    const textos = bloco("Características individuais", a.analise) + bloco("Pontos fortes", a.forte, "forte") + bloco("Pontos vulneráveis", a.vulneravel, "fraco");
+    const conteudo = video + (textos || '<div class="sem-analise">Análise individual ainda não cadastrada.' + (ehAdmin() ? ' <button class="link" data-editar="Análise Individual">Cadastrar agora</button>' : "") + "</div>");
     const passo = (x, rotulo) => x ? '<a class="botao contorno" href="#/e/' + encodeURIComponent(equipe.id) + "/" + encodeURIComponent(x.id) + '" aria-label="' + rotulo + ": " + esc(x.nome) + '"><span>' + (rotulo === "Anterior" ? "‹ " : "") + esc(x.nome) + (rotulo === "Próximo" ? " ›" : "") + "</span></a>" : '<span class="botao contorno" style="visibility:hidden"></span>';
     const dado = (r, val) => "<div><span>" + r + "</span><b>" + esc(val || "—") + "</b></div>";
-    return '<div class="ficha-topo">' + avatar(a, 400) + '<h2 class="titulo">' + esc(a.nome) + '</h2><span class="etiqueta">' + esc(a.funcao) + "</span><p>" + esc(equipe.nome) + "</p></div>" +
+    return '<div class="ficha-topo">' + avatar(a, 400) + '<h2 class="titulo">' + esc(a.nome) + '</h2><span class="etiqueta">' + esc(a.funcao) + "</span><p>" + esc(equipe.nome) + "</p>" + (ehAdmin() ? '<button class="botao contorno editar-atleta" data-editar="Atleta">' + IC_LAPIS + "Editar atleta</button>" : "") + "</div>" +
       '<div class="tres">' + dado("Idade", a.idade ? a.idade + " anos" : "") + dado("Estatura", a.estatura) + dado("Pé dominante", a.pe) + "</div>" +
-      (conteudo || '<div class="sem-analise">Análise individual ainda não cadastrada.</div>') +
+      conteudo +
       (ogol ? '<a class="botao contorno" style="margin-top:12px;width:100%;justify-content:center" target="_blank" rel="noopener" href="' + esc(ogol.externo) + '">' + IC_LINK + "Histórico no oGol</a>" : "") +
       '<div class="passos">' + passo(ant, "Anterior") + passo(prox, "Próximo") + "</div>";
   }
@@ -214,10 +219,72 @@
     } finally { botao.classList.remove("girando"); if (estado.carregando) { estado.carregando = false; redesenhar(); } }
   }
 
+  /* ---------- edição do atleta (só administradores) ---------- */
+  const CAMPOS_EDICAO = [
+    ["Atleta", "Nome", "texto"], ["Função", "Função", "funcao"], ["Pé dominante", "Pé dominante", "pe"], ["Nascimento", "Nascimento (dd/mm/aaaa)", "texto"],
+    ["Estatura", "Estatura (cm)", "texto"], ["Imagem", "Foto (link do Google Drive ou endereço da imagem)", "texto", "larga"],
+    ["Video", "Vídeo (link do YouTube ou do Google Drive)", "texto", "larga"], ["Histórico (site oGol)", "Histórico no oGol (link)", "texto", "larga"],
+    ["Análise Individual", "Características individuais", "area", "larga"], ["Ponto forte", "Pontos fortes (um por linha)", "area"], ["Ponto vulnerável", "Pontos vulneráveis (um por linha)", "area"],
+  ];
+  const acharLinha = (pacote, a) => ((pacote.abas || {})["ADVERSÁRIOS"] || []).find((l) => chave(l["Adversário"]) === a.equipeChave && chave(l.Atleta) === chave(a.nome));
+  function abrirEditor(foco) {
+    const a = estado.atleta, equipe = estado.equipe;
+    if (!a || !ehAdmin()) return;
+    const atual = acharLinha(DIMAS.pacoteLocal(), a) || {};
+    let caixa = $("#editor");
+    if (!caixa) { caixa = document.createElement("dialog"); caixa.id = "editor"; caixa.className = "editor"; document.body.appendChild(caixa); }
+    const opcoes = (lista, v) => (v && !lista.some((x) => chave(x) === chave(v)) ? [v] : []).concat(lista).map((x) => "<option" + (chave(x) === chave(v) ? " selected" : "") + ">" + esc(x) + "</option>").join("");
+    const campo = ([nome, rotulo, tipo, classe], k) => {
+      const v = atual[nome] || "", id = "ed" + k;
+      let entrada;
+      if (tipo === "area") entrada = '<textarea id="' + id + '" data-campo="' + esc(nome) + '" rows="4">' + esc(v) + "</textarea>";
+      else if (tipo === "funcao") entrada = '<select id="' + id + '" data-campo="' + esc(nome) + '"><option value="">—</option>' + opcoes(DIMAS.FUNCOES, v === "Sem função" ? "" : v) + "</select>";
+      else if (tipo === "pe") entrada = '<select id="' + id + '" data-campo="' + esc(nome) + '"><option value="">—</option>' + opcoes(["Destro", "Canhoto", "Ambidestro"], v) + "</select>";
+      else entrada = '<input type="text" id="' + id + '" data-campo="' + esc(nome) + '" value="' + esc(v) + '" autocomplete="off">';
+      return '<div class="' + (classe || "") + '"><label for="' + id + '">' + esc(rotulo) + "</label>" + entrada + "</div>";
+    };
+    caixa.innerHTML = '<form method="dialog" id="form-editor"><h2 class="titulo">Editar atleta</h2><p class="suave">' + esc(equipe.nome + " · " + equipe.competicao) + '</p><div class="editor-grade">' + CAMPOS_EDICAO.map(campo).join("") +
+      '</div><p class="entrada-erro" id="editor-erro" role="alert"></p><div class="editor-rodape"><button type="button" class="botao contorno" id="editor-cancelar">Cancelar</button><button type="submit" class="botao" id="editor-salvar">Salvar e publicar</button></div></form>';
+    $("#editor-cancelar").onclick = () => caixa.close();
+    $("#form-editor").onsubmit = (ev) => { ev.preventDefault(); salvarEdicao(a, equipe); };
+    caixa.showModal();
+    const alvo = foco && caixa.querySelector('[data-campo="' + foco + '"]');
+    if (alvo) { alvo.focus(); alvo.scrollIntoView({ block: "center" }); }
+  }
+  async function salvarEdicao(a, equipe) {
+    const erro = $("#editor-erro"), botao = $("#editor-salvar"), novos = {};
+    document.querySelectorAll("#form-editor [data-campo]").forEach((el) => { novos[el.dataset.campo] = el.value.trim(); });
+    if (!novos.Atleta) { erro.textContent = "Informe o nome."; return; }
+    if (novos.Nascimento && !DIMAS.idadeDe(novos.Nascimento)) { erro.textContent = "Nascimento deve estar no formato dd/mm/aaaa."; return; }
+    if (novos.Video && !midia(novos.Video)) { erro.textContent = "O link do vídeo não parece válido. Use um link do YouTube ou do Google Drive."; return; }
+    if (novos.Nascimento) novos.Idade = DIMAS.idadeDe(novos.Nascimento) + " Anos";
+    novos.Ordem = String(DIMAS.ordemDa(novos["Função"]));
+    const aplicar = (pacote) => { const l = acharLinha(pacote, a); if (!l) return false; Object.assign(l, novos); return true; };
+    erro.textContent = ""; botao.disabled = true; botao.textContent = "Salvando…";
+    try {
+      const publicado = await DIMAS.lerDoc("publicado", true); // parte sempre da versão mais recente
+      if (!aplicar(publicado)) throw new Error("Este atleta não está mais na base. Atualize o app e tente de novo.");
+      publicado.publicadoEm = new Date().toISOString();
+      await DIMAS.gravarDoc("publicado", publicado);
+      try { const rascunho = await DIMAS.lerDoc("rascunho", true); if (aplicar(rascunho)) await DIMAS.gravarDoc("rascunho", rascunho); } catch (e) {} // mantém o painel em dia
+      DIMAS.guarda.gravar(DIMAS.CHAVES.dados, JSON.stringify(publicado));
+      dados = DIMAS.normalizar(publicado);
+      $("#editor").close();
+      const novoId = DIMAS.slug(a.equipe) + "--" + DIMAS.slug(novos.Atleta);
+      estado.equipeNaTela = "";
+      const destino = "#/e/" + encodeURIComponent(equipe.id) + "/" + encodeURIComponent(novoId);
+      if (location.hash === destino) rota(); else location.hash = destino;
+      aviso("Atleta atualizado e publicado.");
+    } catch (e) {
+      erro.textContent = e.message === "Failed to fetch" ? "Sem internet. A edição não foi salva." : "Não foi possível salvar: " + e.message;
+    } finally { botao.disabled = false; botao.textContent = "Salvar e publicar"; }
+  }
+
   /* ---------- eventos ---------- */
   document.addEventListener("click", (ev) => {
-    const el = ev.target.closest("[data-abrir],[data-tocar],[data-filtro],[data-fechar]");
+    const el = ev.target.closest("[data-abrir],[data-tocar],[data-filtro],[data-fechar],[data-editar]");
     if (!el) return;
+    if (el.dataset.editar) { abrirEditor(el.dataset.editar); return; }
     if (el.dataset.abrir) abrirJanela(el.dataset.abrir, el.dataset.externo, el.dataset.titulo);
     else if (el.dataset.tocar) el.parentElement.innerHTML = '<iframe src="' + esc(el.dataset.tocar) + '" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>';
     else if (el.hasAttribute("data-fechar")) fecharCamadas();
