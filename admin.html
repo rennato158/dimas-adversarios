@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Painel DIMAS</title>
+  <meta name="theme-color" content="#0a0a0a">
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="icone.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Michroma&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="estilo.css">
+  <style>
+    main { max-width: 1120px; }
+    .painel { background: var(--painel); border: 1px solid var(--linha); border-radius: var(--raio); padding: 22px; margin-bottom: 18px; }
+    .painel > h2 { font-family: var(--titulo); text-transform: uppercase; font-size: 13px; letter-spacing: 0.1em; color: var(--roxo-claro); margin-bottom: 14px; }
+    .principal { display: grid; gap: 20px; grid-template-columns: 1fr; align-items: center; }
+    @media (min-width: 760px) { .principal { grid-template-columns: 1fr auto; } }
+    .principal h1 { font-size: 20px; margin-bottom: 6px; }
+    .principal p { margin: 0; color: var(--suave); max-width: 62ch; }
+    .principal p b { color: var(--texto); }
+    .grande { min-height: 58px; padding: 14px 28px; font-size: 17px; justify-content: center; }
+    .botao[disabled] { opacity: 0.55; pointer-events: none; }
+    .botao.perigo { background: transparent; border: 1px solid var(--vermelho); color: var(--vermelho); }
+    .botao.pequeno { min-height: 38px; padding: 6px 14px; font-size: 14px; }
+    .selo { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: #4a3a12; color: #ffd27a; margin-left: 6px; }
+    .selo.ok { background: #153524; color: var(--verde); }
+    .contagem { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 18px; }
+    .contagem div { background: var(--painel-2); border-radius: 12px; padding: 12px; text-align: center; }
+    .contagem b { display: block; font-family: var(--titulo); font-weight: 400; font-size: 20px; font-variant-numeric: tabular-nums; }
+    .contagem span { color: var(--suave); font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .retorno { margin-top: 16px; padding: 12px 14px; border-radius: 12px; background: var(--painel-2); border-left: 3px solid var(--roxo); display: none; white-space: pre-line; }
+    .retorno.ok { border-color: var(--verde); display: block; } .retorno.erro { border-color: var(--vermelho); display: block; } .retorno.info { display: block; }
+    label { display: block; font-size: 13px; color: var(--suave); margin: 12px 0 4px; }
+    input[type="text"], input[type="url"], input[type="password"], input[type="email"], input[type="search"], select, textarea {
+      width: 100%; min-height: 46px; border-radius: 12px; border: 1px solid var(--linha); background: var(--fundo); color: var(--texto); font: inherit; padding: 10px 14px; }
+    textarea { min-height: 96px; resize: vertical; line-height: 1.45; }
+    .linha-botoes { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; align-items: center; }
+    .duas { display: grid; gap: 0 14px; grid-template-columns: 1fr; } @media (min-width: 620px) { .duas { grid-template-columns: 1fr 1fr; } }
+    .larga { grid-column: 1 / -1; }
+    details summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
+    ol { padding-left: 20px; color: #dcdcdc; max-width: 72ch; } ol li { margin: 6px 0; }
+    code, pre { background: var(--painel-2); border-radius: 8px; font-size: 13px; } code { padding: 1px 6px; } pre { padding: 12px; overflow-x: auto; white-space: pre; }
+    .pendencias { list-style: none; margin: 0; padding: 0; }
+    .pendencias li { padding: 10px 0; border-bottom: 1px solid var(--linha); display: flex; gap: 12px; align-items: baseline; }
+    .pendencias li:last-child { border: 0; }
+    .pendencias b { flex: none; min-width: 44px; text-align: right; font-variant-numeric: tabular-nums; color: var(--roxo-claro); }
+    .pendencias small { display: block; color: var(--suave); }
+    .barra { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
+    .barra select { width: auto; min-width: 180px; flex: 0 1 240px; } .barra input { flex: 1; min-width: 160px; }
+    .rolagem { overflow: auto; border: 1px solid var(--linha); border-radius: 12px; max-height: 520px; }
+    table { border-collapse: collapse; width: 100%; font-size: 14px; }
+    th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--linha); white-space: nowrap; }
+    th { position: sticky; top: 0; background: var(--painel-2); color: var(--suave); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; z-index: 1; }
+    tbody tr { cursor: pointer; } tbody tr:hover { background: var(--painel-2); }
+    td.sim { color: var(--verde); } td.nao { color: var(--suave); }
+    td .mini { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; object-position: top; background: var(--painel-2); display: inline-block; vertical-align: middle; margin-right: 8px; }
+    dialog { width: min(720px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); background: var(--painel); color: var(--texto); border: 1px solid var(--linha); border-radius: var(--raio); padding: 0; }
+    dialog::backdrop { background: rgba(0, 0, 0, 0.75); }
+    dialog form { padding: 22px; }
+    dialog h2 { font-family: var(--titulo); text-transform: uppercase; font-size: 15px; margin-bottom: 4px; }
+    .rodape-form { display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap; } .rodape-form .espaco { flex: 1; }
+  </style>
+</head>
+<body>
+  <header class="topo">
+    <span class="marca">
+      <img src="https://cdn.fanbase.com.br/fanhub/ceara/images/logo-ceara-vetor.svg" alt="" onerror="this.remove()">
+      <b>DIMAS <span>PAINEL DE CONTROLE</span></b>
+    </span>
+    <a class="botao contorno pequeno" href="index.html" target="_blank" rel="noopener">Abrir app</a>
+  </header>
+
+  <main>
+    <section class="painel">
+      <div class="principal">
+        <div>
+          <h1 class="titulo">Atualização do app</h1>
+          <p>Edite competições, equipes e atletas abaixo. As mudanças ficam em rascunho até você apertar <b>Atualizar app</b>, que publica a nova versão para todos os iPads e celulares.</p>
+          <p style="margin-top:8px">Versão no ar: <b id="versao">—</b> <span id="selo"></span></p>
+          <p id="modo" style="margin-top:4px;font-size:14px"></p>
+        </div>
+        <button class="botao grande" id="publicar">
+          <svg viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.3-4.3L4 8.5M4 4v4.5h4.5M4 13a8 8 0 0 0 14.3 4.3L20 15.5M20 20v-4.5h-4.5"/></svg>
+          Atualizar app
+        </button>
+      </div>
+      <div class="contagem" id="contagem"></div>
+      <div class="retorno" id="retorno" role="status" aria-live="polite"></div>
+    </section>
+
+    <section class="painel" id="conexao">
+      <h2>Base online (Firebase)</h2>
+      <p class="suave" id="estado-conexao" style="margin:0 0 4px"></p>
+      <div class="duas">
+        <div><label for="fb-projeto">ID do projeto (projectId)</label><input id="fb-projeto" type="text" autocomplete="off" placeholder="dimas-adversarios"></div>
+        <div><label for="fb-chave">Chave de API da Web (apiKey)</label><input id="fb-chave" type="text" autocomplete="off" placeholder="AIza…"></div>
+        <div><label for="fb-email">E-mail do administrador</label><input id="fb-email" type="email" autocomplete="username"></div>
+        <div><label for="fb-senha">Senha</label><input id="fb-senha" type="password" autocomplete="current-password"></div>
+      </div>
+      <div class="linha-botoes">
+        <button class="botao" id="entrar">Conectar e entrar</button>
+        <button class="botao contorno" id="sair" hidden>Sair</button>
+        <button class="botao contorno" id="baixar">Baixar cópia de segurança</button>
+        <button class="botao contorno" id="restaurar">Restaurar cópia</button>
+        <input type="file" id="arquivo" accept="application/json,.json" hidden>
+      </div>
+      <details style="margin-top:16px">
+        <summary>Como criar a base no Firebase (uma única vez)</summary>
+        <ol>
+          <li>Em <b>console.firebase.google.com</b>, crie um projeto (o Google Analytics pode ficar desligado).</li>
+          <li><b>Criação &gt; Firestore Database &gt; Criar banco de dados</b>, modo de produção, região <code>southamerica-east1</code>.</li>
+          <li><b>Criação &gt; Authentication &gt; Método de login</b>: ative <b>E-mail/senha</b>. Na aba <b>Usuários</b>, adicione o seu e-mail e uma senha.</li>
+          <li>No Firestore, aba <b>Regras</b>, cole as regras abaixo trocando o e-mail pelo seu e publique.</li>
+          <li><b>Configurações do projeto &gt; Seus apps &gt; Web</b> (<code>&lt;/&gt;</code>): registre o app e copie <code>projectId</code> e <code>apiKey</code> para os campos acima.</li>
+          <li>Aperte <b>Conectar e entrar</b> e depois <b>Atualizar app</b> para enviar a base pela primeira vez.</li>
+        </ol>
+        <pre id="regras">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function admin() {
+      return request.auth != null &amp;&amp; request.auth.token.email in ['SEU-EMAIL@exemplo.com'];
+    }
+    match /dimas/publicado { allow read: if true;    allow write: if admin(); }
+    match /dimas/rascunho  { allow read, write: if admin(); }
+  }
+}</pre>
+        <button class="botao contorno pequeno" id="copiar-regras">Copiar regras</button>
+      </details>
+    </section>
+
+    <section class="painel">
+      <h2>Cadastro</h2>
+      <div class="barra">
+        <button class="chip" data-aba="ADVERSÁRIOS" aria-pressed="true">Atletas</button>
+        <button class="chip" data-aba="EQUIPES" aria-pressed="false">Equipes</button>
+        <button class="chip" data-aba="CAMPEONATOS" aria-pressed="false">Competições</button>
+      </div>
+      <div class="barra">
+        <select id="filtro-equipe" aria-label="Equipe"></select>
+        <input id="filtro" type="search" placeholder="Filtrar por nome ou função">
+        <button class="botao pequeno" id="novo">Novo</button>
+        <button class="botao contorno pequeno" id="importar">Importar elenco</button>
+      </div>
+      <div class="rolagem"><table id="tabela"></table></div>
+      <p class="suave" id="resumo-tabela" style="margin:10px 0 0;font-size:14px"></p>
+    </section>
+
+    <section class="painel">
+      <h2>Pendências de cadastro</h2>
+      <ul class="pendencias" id="pendencias"></ul>
+    </section>
+
+  </main>
+
+  <dialog id="ficha"><form method="dialog" id="form-ficha"></form></dialog>
+  <dialog id="importacao"><form method="dialog" id="form-importacao"></form></dialog>
+
+  <script src="config.js"></script>
+  <script src="nucleo.js"></script>
+  <script src="base-sofascore.js"></script>
+  <script src="dados-iniciais.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
