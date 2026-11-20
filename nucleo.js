@@ -264,6 +264,22 @@ window.DIMAS = (function () {
     return situacao;
   }
 
+  /* ---------- confirmação na própria página (alguns navegadores e apps instalados bloqueiam o confirm() nativo) ---------- */
+  function confirmar(mensagem, rotuloOk) {
+    return new Promise((resolver) => {
+      const d = document.createElement("dialog");
+      d.className = "confirmacao";
+      d.innerHTML = '<form method="dialog"><p></p><div class="confirmacao-botoes"><button type="button" class="botao contorno" value="nao">Cancelar</button><button type="submit" class="botao" value="sim"></button></div></form>';
+      d.querySelector("p").textContent = mensagem;
+      d.querySelector('[value="sim"]').textContent = rotuloOk || "Confirmar";
+      let resposta = false;
+      d.querySelector('[value="nao"]').onclick = () => d.close();
+      d.querySelector("form").onsubmit = (ev) => { ev.preventDefault(); resposta = true; d.close(); };
+      d.addEventListener("close", () => { d.remove(); resolver(resposta); });
+      document.body.appendChild(d); d.showModal(); d.querySelector('[value="sim"]').focus();
+    });
+  }
+
   /* ---------- carga no app ---------- */
   function pacoteLocal() {
     const txt = guarda.ler(CHAVES.dados);
@@ -287,6 +303,6 @@ window.DIMAS = (function () {
   return {
     CHAVES, guarda, chave, slug, esc, semAcento, driveId, youtubeId, imagem, midia, FUNCOES, ordemDa, idadeDe, normalizar,
     linhaSofa, lerElencoColado, mesclarElenco, firebase, definirFirebase, conectado, entrar, sair, sessao, lerDoc, gravarDoc,
-    pacoteLocal, buscarPublicado, dataHora, normalizarEmail, lerAcesso, gravarAcesso, convidar, enviarDefinicaoSenha,
+    pacoteLocal, buscarPublicado, dataHora, normalizarEmail, lerAcesso, gravarAcesso, convidar, enviarDefinicaoSenha, confirmar,
   };
 })();
