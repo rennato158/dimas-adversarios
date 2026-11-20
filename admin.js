@@ -26,6 +26,23 @@
   const linhas = (a) => rascunho.abas[a || aba];
   const pendente = () => JSON.stringify(ABAS.map((a) => rascunho.abas[a])) !== JSON.stringify(ABAS.map((a) => (publicado.abas || {})[a] || []));
   const logado = () => DIMAS.conectado() && !!DIMAS.sessao();
+  const vazio = (p) => !p || !p.abas || ABAS.every((a) => !(p.abas[a] || []).length);
+
+  /* Traz a base online para este navegador. Sem dados locais, adota o rascunho online (ou a versão publicada). */
+  async function sincronizar(perguntar) {
+    try { publicado = await DIMAS.buscarPublicado(); } catch (e) { if (e.codigo === "PERMISSION_DENIED") throw e; }
+    let remoto = null;
+    try { remoto = await DIMAS.lerDoc("rascunho", true); } catch (e) { if (e.codigo === "PERMISSION_DENIED") throw e; }
+    const online = !vazio(remoto) ? remoto : !vazio(publicado) ? { abas: copia(publicado.abas) } : null;
+    if (!online) return "vazia";
+    const igual = JSON.stringify(ABAS.map((a) => online.abas[a] || [])) === JSON.stringify(ABAS.map((a) => rascunho.abas[a]));
+    if (vazio(rascunho) || (!igual && perguntar && confirm("Este navegador tem um rascunho diferente da base online. OK para carregar a base online; Cancelar para manter o daqui."))) {
+      rascunho = { abas: copia(online.abas) };
+      ABAS.forEach((a) => { if (!Array.isArray(rascunho.abas[a])) rascunho.abas[a] = []; });
+      guarda.gravar(CHAVES.rascunho, JSON.stringify(rascunho));
+    }
+    return "ok";
+  }
 
   function retorno(tipo, msg) { const el = $("#retorno"); el.className = "retorno " + tipo; el.textContent = msg; }
 
@@ -209,6 +226,8 @@
   async function publicar() {
     const botao = $("#publicar");
     if (DIMAS.conectado() && !DIMAS.sessao()) { retorno("info", "Entre com a conta de administrador para publicar na base online."); $("#conexao").scrollIntoView({ behavior: "smooth" }); $("#fb-email").focus(); return; }
+    if (vazio(rascunho) && !vazio(publicado)) { retorno("erro", "O cadastro deste navegador está vazio e a base online tem dados. Para não apagar tudo, a publicação foi bloqueada. Recarregue a página para baixar a base."); return; }
+    if (vazio(rascunho) && DIMAS.conectado()) { retorno("erro", "Não há nada cadastrado para publicar. Se a base online já tem dados, recarregue a página para baixá-los."); return; }
     const pacote = { publicadoEm: new Date().toISOString(), origem: "painel", abas: copia(rascunho.abas) };
     botao.disabled = true; retorno("info", "Publicando…");
     try {
@@ -228,13 +247,7 @@
     try {
       await DIMAS.entrar(email, senha); $("#fb-senha").value = "";
       let msg = "Conectado como " + email + ".";
-      try {
-        const remoto = await DIMAS.lerDoc("rascunho", true);
-        if (remoto && remoto.abas && JSON.stringify(remoto.abas) !== JSON.stringify(rascunho.abas) && confirm("Já existe uma base online. OK para carregá-la neste navegador; Cancelar para manter a daqui (e enviá-la ao publicar).")) {
-          rascunho = remoto; guarda.gravar(CHAVES.rascunho, JSON.stringify(rascunho));
-        }
-      } catch (e) { if (e.codigo === "NOT_FOUND") msg += " A base online está vazia: aperte Atualizar app para enviar os dados pela primeira vez."; else if (e.codigo === "PERMISSION_DENIED") throw e; }
-      try { publicado = await DIMAS.buscarPublicado(); } catch (e) {}
+      if ((await sincronizar(true)) === "vazia") msg += " A base online está vazia: aperte Atualizar app para enviar os dados pela primeira vez.";
       desenhar(); retorno("ok", msg);
     } catch (e) { DIMAS.sair(); desenhar(); retorno("erro", "Não foi possível conectar: " + e.message); }
   }
@@ -278,5 +291,5 @@
   const f = DIMAS.firebase(); $("#fb-projeto").value = f.projectId; $("#fb-chave").value = f.apiKey;
   if (DIMAS.sessao()) $("#fb-email").value = DIMAS.sessao().email;
   desenhar();
-  if (DIMAS.conectado()) DIMAS.buscarPublicado().then((p) => { publicado = p; desenhar(); }).catch(() => {});
+  if (logado()) sincronizar(false).then(desenhar).catch((e) => retorno("erro", "Não foi possível ler a base online: " + e.message));
 })();

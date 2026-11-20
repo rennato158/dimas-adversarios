@@ -43,7 +43,7 @@
       return '<a class="cartao" href="#/c/' + encodeURIComponent(c.id) + '"><span class="arte">' + arte(c.imagem, c.nome, 400) + "</span><strong>" + esc(c.nome) + "</strong><small>" + (n ? plural(n, "equipe", "equipes") : "Sem equipes") + "</small></a>";
     }).join("");
     tela.innerHTML = '<div class="cabecalho"><h1 class="titulo">Competições</h1></div>' +
-      (cartoes ? '<div class="grade">' + cartoes + "</div>" : '<div class="vazio">Nenhuma competição cadastrada ainda.</div>') +
+      (cartoes ? '<div class="grade">' + cartoes + "</div>" : '<div class="vazio">' + (estado.carregando ? "Carregando dados…" : "Nenhuma competição cadastrada ainda.") + "</div>") +
       '<p class="rodape">' + plural(dados.equipes.length, "equipe", "equipes") + " · " + plural(dados.atletas.length, "atleta", "atletas") + "<br>Atualizado em " + esc(dataHora(dados.publicadoEm)) + "</p>";
   }
 
@@ -200,6 +200,8 @@
     const botao = $("#atualizar");
     if (!DIMAS.conectado()) { if (manual) aviso("Base online ainda não conectada. Mostrando os dados deste aparelho."); return; }
     botao.classList.add("girando");
+    const semDados = !dados.competicoes.length;
+    if (semDados) { estado.carregando = true; redesenhar(); }
     try {
       const antes = dados.publicadoEm;
       const novo = DIMAS.normalizar(await DIMAS.buscarPublicado());
@@ -208,7 +210,8 @@
       else if (manual) aviso("Você já está com a versão mais recente.");
     } catch (e) {
       if (manual) aviso(navigator.onLine === false ? "Sem internet. Mostrando os dados salvos." : "Não foi possível atualizar agora.");
-    } finally { botao.classList.remove("girando"); }
+      if (semDados) aviso(navigator.onLine === false ? "Sem internet. Conecte-se para baixar os dados." : "Não foi possível baixar os dados. Toque em atualizar para tentar de novo.");
+    } finally { botao.classList.remove("girando"); if (estado.carregando) { estado.carregando = false; redesenhar(); } }
   }
 
   /* ---------- eventos ---------- */
