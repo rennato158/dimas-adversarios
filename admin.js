@@ -81,7 +81,7 @@
     const sel = $("#filtro-equipe"), atual = sel.value;
     sel.innerHTML = '<option value="">Todas as equipes</option>' + nomesEquipes().map((n) => '<option value="' + esc(n) + '">' + esc(n) + "</option>").join("");
     sel.value = [...sel.options].some((o) => o.value === atual) ? atual : "";
-    sel.hidden = aba !== "ADVERSÁRIOS"; $("#importar").hidden = aba !== "ADVERSÁRIOS";
+    sel.hidden = aba !== "ADVERSÁRIOS"; ["#importar", "#importar-json", "#modelo-json"].forEach((s) => { $(s).hidden = aba !== "ADVERSÁRIOS"; });
   }
 
   function tabela() {
@@ -226,6 +226,150 @@
     $("#importacao").showModal();
   }
 
+  /* ---------- importação de arquivo JSON (dados, vídeos e fotos dos atletas) ---------- */
+  const ALIAS = {
+    Atleta: ["atleta", "nome", "name", "jogador"], "Adversário": ["equipe", "adversario", "time", "team", "clube"], "Competição": ["competicao", "campeonato"],
+    "Função": ["funcao", "posicao", "position"], Nascimento: ["nascimento", "datanascimento", "datadenascimento", "birthdate"], Idade: ["idade", "age"],
+    Estatura: ["estatura", "altura", "height"], "Pé dominante": ["pedominante", "pe", "foot"], Imagem: ["imagem", "foto", "image", "photo", "fotourl", "imagemurl"],
+    Video: ["video", "videos", "linkdovideo", "linkvideo", "videourl"], "Análise Individual": ["analiseindividual", "analise", "caracteristicas", "caracteristicasindividuais"],
+    "Ponto forte": ["pontoforte", "pontosfortes", "forte"], "Ponto vulnerável": ["pontovulneravel", "pontosvulneraveis", "vulneravel"],
+    "Histórico (site oGol)": ["historicositeogol", "ogol", "historico"], SofaScore: ["sofascore", "sofascoreid", "idsofascore"],
+  };
+  const semEspaco = (s) => chave(s).replace(/ /g, "");
+  function lerItemJson(obj) {
+    const mapa = {}; for (const k of Object.keys(obj || {})) mapa[semEspaco(k)] = obj[k];
+    const l = {};
+    for (const campo of Object.keys(ALIAS)) {
+      let v; for (const a of [semEspaco(campo)].concat(ALIAS[campo])) { if (mapa[a] != null && mapa[a] !== "") { v = mapa[a]; break; } }
+      if (v == null) continue;
+      if (Array.isArray(v)) v = campo === "Video" || campo === "Imagem" ? (typeof v[0] === "object" && v[0] ? v[0].url || v[0].link || "" : v[0] || "") : v.map((x) => String(x).trim()).filter(Boolean).join("\n");
+      if (typeof v === "object") v = v.url || v.link || "";
+      l[campo] = String(v).trim();
+    }
+    if (l.Nascimento && /^\d{4}-\d{2}-\d{2}/.test(l.Nascimento)) l.Nascimento = l.Nascimento.slice(8, 10) + "/" + l.Nascimento.slice(5, 7) + "/" + l.Nascimento.slice(0, 4);
+    if (l.Estatura) { const n = parseFloat(l.Estatura.replace(",", ".")); l.Estatura = n ? String(n < 3 ? Math.round(n * 100) : Math.round(n)) : ""; }
+    if (l.Nascimento && DIMAS.idadeDe(l.Nascimento)) l.Idade = DIMAS.idadeDe(l.Nascimento) + " Anos"; else if (l.Idade && /^\d+$/.test(l.Idade)) l.Idade += " Anos";
+    if (l["Função"]) { l["Função"] = DIMAS.FUNCOES.find((f) => chave(f) === chave(l["Função"])) || l["Função"]; l.Ordem = String(DIMAS.ordemDa(l["Função"])); }
+    if (l["Pé dominante"]) l["Pé dominante"] = ["Destro", "Canhoto", "Ambidestro"].find((p) => chave(p) === chave(l["Pé dominante"])) || l["Pé dominante"];
+    if (l.Imagem && !/^https?:\/\//i.test(l.Imagem) && !/^data:image\//i.test(l.Imagem) && !/^foto:/.test(l.Imagem) && l.Imagem.length > 200) l.Imagem = "data:image/jpeg;base64," + l.Imagem.replace(/\s+/g, "");
+    return l;
+  }
+  /* Aceita: lista de atletas; { equipe, competicao, atletas: [...] }; ou { equipes: [{ equipe, competicao, atletas: [...] }] } */
+  function itensDoJson(raiz, equipePadrao) {
+    const saida = [];
+    const juntar = (lista, eq, comp) => (lista || []).forEach((o) => { const l = lerItemJson(o); if (!l["Adversário"] && eq) l["Adversário"] = eq; if (!l["Competição"] && comp) l["Competição"] = comp; saida.push(l); });
+    if (Array.isArray(raiz)) juntar(raiz, equipePadrao, "");
+    else if (raiz && Array.isArray(raiz.equipes)) raiz.equipes.forEach((e) => { const c = lerItemJson(e); juntar(e.atletas || e.jogadores || e.elenco, c["Adversário"] || c.Atleta || equipePadrao, c["Competição"] || lerItemJson(raiz)["Competição"] || ""); });
+    else if (raiz && (raiz.atletas || raiz.jogadores || raiz.elenco)) { const c = lerItemJson(raiz); juntar(raiz.atletas || raiz.jogadores || raiz.elenco, c["Adversário"] || equipePadrao, c["Competição"] || ""); }
+    return saida;
+  }
+  function resolverElenco(nome, competicao) {
+    const eqs = linhas("EQUIPES");
+    let m = eqs.filter((e) => chave(elencoDe(e)) === chave(nome));
+    if (m.length) return { chave: elencoDe(m[0]) };
+    m = eqs.filter((e) => chave(e.Time) === chave(nome));
+    if (competicao) { const c = m.filter((e) => chave(e["Competição"]) === chave(competicao)); if (c.length) return { chave: elencoDe(c[0]) }; }
+    if (m.length === 1) return { chave: elencoDe(m[0]) };
+    if (m.length > 1) return { ambigua: true };
+    return { chave: nome, nova: true };
+  }
+  function acharAtleta(lista, imp) {
+    const palavras = (n) => chave(n).split(" ").filter((p) => p.length > 1), contem = (a, b) => a.length && a.every((p) => b.includes(p));
+    let alvo = lista.find((l) => (imp.SofaScore && l.SofaScore === imp.SofaScore) || chave(l.Atleta) === chave(imp.Atleta));
+    if (!alvo) { const pi = palavras(imp.Atleta); const c = lista.filter((l) => contem(palavras(l.Atleta), pi) || contem(pi, palavras(l.Atleta))); if (c.length === 1) alvo = c[0]; }
+    return alvo;
+  }
+  const reduzirFoto = (dataUri) => new Promise((ok, falha) => {
+    const img = new Image();
+    img.onload = () => { const m = 200 / Math.max(img.width, img.height), e = Math.min(1, m); const cv = document.createElement("canvas"); cv.width = Math.round(img.width * e); cv.height = Math.round(img.height * e);
+      const c = cv.getContext("2d"); c.fillStyle = "#fff"; c.fillRect(0, 0, cv.width, cv.height); c.drawImage(img, 0, 0, cv.width, cv.height); ok(cv.toDataURL("image/jpeg", 0.78)); };
+    img.onerror = () => falha(new Error("imagem inválida")); img.src = dataUri;
+  });
+
+  function lerArquivoJson(arquivo) {
+    const leitor = new FileReader();
+    leitor.onload = () => {
+      let raiz; try { raiz = JSON.parse(leitor.result); } catch (e) { retorno("erro", "Esse arquivo não é um JSON válido."); return; }
+      if (raiz && raiz.abas) { retorno("info", "Esse arquivo é uma cópia de segurança do DIMAS. Use o botão Restaurar cópia."); return; }
+      const itens = itensDoJson(raiz, $("#filtro-equipe").value).filter((l) => l.Atleta);
+      if (!itens.length) { retorno("erro", "Não encontrei atletas nesse arquivo. Baixe o modelo para ver o formato esperado."); return; }
+      abrirPreviaJson(itens, arquivo.name);
+    };
+    leitor.readAsText(arquivo);
+  }
+
+  function abrirPreviaJson(itens, nomeArquivo) {
+    const semEquipe = itens.filter((l) => !l["Adversário"]), ambiguas = new Set(), novas = new Map(), porElenco = new Map();
+    let novos = 0, atualizados = 0;
+    for (const l of itens) {
+      if (!l["Adversário"]) continue;
+      const r = resolverElenco(l["Adversário"], l["Competição"]);
+      if (r.ambigua) { ambiguas.add(l["Adversário"]); continue; }
+      if (r.nova) novas.set(r.chave, l["Competição"] || "");
+      l._elenco = r.chave;
+      if (!porElenco.has(r.chave)) porElenco.set(r.chave, { novos: 0, atualizados: 0 });
+      const existe = acharAtleta(linhas("ADVERSÁRIOS").filter((a) => chave(a["Adversário"]) === chave(r.chave)), l);
+      if (existe) { porElenco.get(r.chave).atualizados++; atualizados++; } else { porElenco.get(r.chave).novos++; novos++; }
+    }
+    const validos = itens.filter((l) => l._elenco);
+    const embutidas = validos.filter((l) => /^data:image\//i.test(l.Imagem || "")).length, comLink = validos.filter((l) => /^https?:\/\//i.test(l.Imagem || "")).length, videos = validos.filter((l) => l.Video).length;
+    const avisos = [];
+    if (semEquipe.length) avisos.push(semEquipe.length + " atleta(s) sem equipe no arquivo foram ignorados. Informe \"equipe\" no JSON ou escolha a equipe no filtro antes de importar.");
+    if (ambiguas.size) avisos.push("Equipe em mais de uma competição, informe \"competicao\" no JSON: " + [...ambiguas].join(", ") + ".");
+    if (novas.size) avisos.push("Equipes novas que serão criadas: " + [...novas.keys()].join(", ") + ".");
+    if (embutidas && !logado()) avisos.push("O arquivo tem fotos embutidas. Entre na base online antes de aplicar, para que elas possam ser gravadas.");
+    $("#form-importacao").innerHTML = "<h2>Importar JSON</h2>" + '<p class="suave" style="margin:6px 0 0">' + esc(nomeArquivo) + "</p>" +
+      '<p class="retorno info" style="display:block">' + esc(validos.length + " atleta(s): " + novos + " novo(s) e " + atualizados + " já cadastrado(s), que terão os campos do arquivo atualizados.\n" +
+        "Fotos: " + embutidas + " embutida(s) e " + comLink + " por link · Vídeos: " + videos + "\n" + [...porElenco].map(([k, v]) => k + ": " + v.novos + " novo(s), " + v.atualizados + " atualizado(s)").join("\n")) + "</p>" +
+      (avisos.length ? '<p class="retorno erro" style="display:block">' + esc(avisos.join("\n")) + "</p>" : "") +
+      '<div class="rodape-form"><span class="espaco"></span><button type="button" class="botao contorno" id="cancelar-json">Cancelar</button><button type="submit" class="botao" id="aplicar-json"' + (validos.length && !(embutidas && !logado()) ? "" : " disabled") + ">Aplicar</button></div>";
+    $("#cancelar-json").onclick = () => $("#importacao").close();
+    $("#form-importacao").onsubmit = (ev) => { ev.preventDefault(); aplicarJson(validos, novas); };
+    $("#importacao").showModal();
+  }
+
+  async function aplicarJson(itens, novas) {
+    const botao = $("#aplicar-json"); botao.disabled = true; botao.textContent = "Importando…";
+    try {
+      // 1) fotos embutidas: reduzidas e gravadas num documento por elenco; o atleta guarda só a referência
+      const fotos = new Map(); let falhasFoto = 0;
+      for (const l of itens) {
+        if (!/^data:image\//i.test(l.Imagem || "")) continue;
+        try { const mini = await reduzirFoto(l.Imagem); const id = DIMAS.slug(l.Atleta); if (!fotos.has(l._elenco)) fotos.set(l._elenco, {}); fotos.get(l._elenco)[id] = mini; l.Imagem = "foto:" + id; }
+        catch (e) { falhasFoto++; delete l.Imagem; }
+      }
+      for (const [elenco, novasFotos] of fotos) {
+        const doc = "fotos-" + DIMAS.slug(elenco); let atual = { fotos: {} };
+        try { const d = await DIMAS.lerDoc(doc, true); if (d && d.fotos) atual = d; } catch (e) { if (e.codigo && e.codigo !== "NOT_FOUND") throw e; }
+        Object.assign(atual.fotos, novasFotos);
+        if (new TextEncoder().encode(JSON.stringify(atual)).length > 950000) throw new Error("As fotos de " + elenco + " passam do limite de armazenamento. Importe menos fotos por equipe.");
+        await DIMAS.gravarDoc(doc, atual);
+      }
+      // 2) equipes novas e atletas
+      for (const [nome, comp] of novas) if (!linhas("EQUIPES").some((e) => chave(elencoDe(e)) === chave(nome))) linhas("EQUIPES").push(comp ? { Time: nome, "Competição": comp } : { Time: nome });
+      let novos = 0, atualizados = 0;
+      for (const l of itens) {
+        const campos = {}; for (const k of Object.keys(l)) if (k !== "_elenco" && k !== "Competição" && l[k] !== "") campos[k] = l[k];
+        campos["Adversário"] = l._elenco;
+        const alvo = acharAtleta(linhas("ADVERSÁRIOS").filter((a) => chave(a["Adversário"]) === chave(l._elenco)), l);
+        if (alvo) { const nomeAtual = alvo.Atleta; Object.assign(alvo, campos); alvo.Atleta = nomeAtual; atualizados++; // mantém o nome já cadastrado }
+        else { if (!campos["Função"]) { campos["Função"] = "Sem função"; campos.Ordem = "9"; } linhas("ADVERSÁRIOS").push(campos); novos++; }
+      }
+      $("#importacao").close(); salvarRascunho();
+      retorno("ok", "JSON importado: " + novos + " atleta(s) novo(s) e " + atualizados + " atualizado(s)" + (fotos.size ? ", com fotos gravadas em " + fotos.size + " elenco(s)" : "") + (falhasFoto ? ". " + falhasFoto + " foto(s) não puderam ser lidas" : "") + ". Aperte Atualizar app para publicar.");
+    } catch (e) { botao.disabled = false; botao.textContent = "Aplicar"; retorno("erro", "A importação falhou: " + e.message); $("#importacao").close(); }
+  }
+
+  function baixarModeloJson() {
+    const modelo = { equipe: "Nome da equipe (como está no painel)", competicao: "Brasileiro Série B", atletas: [{
+      nome: "Nome do atleta", funcao: "Atacante", nascimento: "26/01/2008", estatura: 184, pe: "Destro",
+      imagem: "https://drive.google.com/file/d/ID/view  (ou a própria imagem embutida: data:image/jpeg;base64,...)",
+      video: "https://youtu.be/ID  (ou link do Google Drive)", caracteristicas: "Texto livre sobre o atleta.",
+      pontosFortes: ["Finalização", "Jogo aéreo"], pontosVulneraveis: ["Recomposição defensiva"], ogol: "https://www.ogol.com.br/jogador/..." }] };
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(modelo, null, 2)], { type: "application/json" }));
+    a.download = "modelo-atletas-dimas.json"; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+
   /* ---------- publicação e base online ---------- */
   async function publicar() {
     const botao = $("#publicar");
@@ -284,6 +428,9 @@
   $("#filtro-equipe").addEventListener("change", tabela);
   $("#novo").addEventListener("click", () => abrirFicha(null));
   $("#importar").addEventListener("click", abrirImportacao);
+  $("#importar-json").addEventListener("click", () => $("#arquivo-json").click());
+  $("#arquivo-json").addEventListener("change", (ev) => { if (ev.target.files[0]) lerArquivoJson(ev.target.files[0]); ev.target.value = ""; });
+  $("#modelo-json").addEventListener("click", baixarModeloJson);
   $("#publicar").addEventListener("click", publicar);
   $("#entrar").addEventListener("click", entrar);
   $("#sair").addEventListener("click", () => { DIMAS.sair(); desenhar(); retorno("info", "Você saiu da base online."); });
