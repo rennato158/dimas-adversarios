@@ -38,7 +38,7 @@
     const online = !vazio(remoto) ? remoto : !vazio(publicado) ? { abas: copia(publicado.abas) } : null;
     if (!online) return "vazia";
     const igual = JSON.stringify(ABAS.map((a) => online.abas[a] || [])) === JSON.stringify(ABAS.map((a) => rascunho.abas[a]));
-    if (vazio(rascunho) || (!igual && semPendenciaLocal) || (!igual && perguntar && confirm("Este navegador tem um rascunho diferente da base online. OK para carregar a base online; Cancelar para manter o daqui."))) {
+    if (vazio(rascunho) || (!igual && semPendenciaLocal) || (!igual && perguntar && (await DIMAS.confirmar("Este navegador tem um rascunho diferente da base online. Carregar a base online? (Cancelar mantém o rascunho deste navegador.)", "Carregar a base online")))) {
       rascunho = { abas: copia(online.abas) };
       ABAS.forEach((a) => { if (!Array.isArray(rascunho.abas[a])) rascunho.abas[a] = []; });
       guarda.gravar(CHAVES.rascunho, JSON.stringify(rascunho));
@@ -178,13 +178,13 @@
     retorno("info", (novo ? "Cadastro criado" : "Cadastro alterado") + ": " + l[NOME[aba]] + ". Aperte Atualizar app para publicar.");
   }
 
-  function excluir(indice) {
+  async function excluir(indice) {
     const l = linhas()[indice];
     let msg = "Excluir " + l[NOME[aba]] + "?";
     const compartilhado = aba === "EQUIPES" && linhas("EQUIPES").some((x, i) => i !== indice && chave(elencoDe(x)) === chave(elencoDe(l)));
     const doTime = aba === "EQUIPES" && !compartilhado ? linhas("ADVERSÁRIOS").filter((a) => chave(a["Adversário"]) === chave(elencoDe(l))) : [];
     if (doTime.length) msg = "Excluir " + l.Time + " e os " + doTime.length + " atletas cadastrados nela?";
-    if (!confirm(msg)) return;
+    if (!(await DIMAS.confirmar(msg, "Excluir"))) return;
     linhas().splice(indice, 1);
     if (doTime.length) rascunho.abas["ADVERSÁRIOS"] = linhas("ADVERSÁRIOS").filter((a) => chave(a["Adversário"]) !== chave(elencoDe(l)));
     $("#ficha").close(); salvarRascunho();
@@ -407,11 +407,11 @@
   }
   function restaurar(arquivo) {
     const leitor = new FileReader();
-    leitor.onload = () => {
+    leitor.onload = async () => {
       try {
         const j = JSON.parse(leitor.result);
         if (!j.abas || !Array.isArray(j.abas["ADVERSÁRIOS"])) throw new Error("formato");
-        if (!confirm("Substituir o rascunho atual pela cópia de " + dataHora(j.exportadoEm) + "?")) return;
+        if (!(await DIMAS.confirmar("Substituir o rascunho atual pela cópia de " + dataHora(j.exportadoEm) + "?", "Substituir"))) return;
         rascunho = { abas: j.abas }; ABAS.forEach((a) => { if (!Array.isArray(rascunho.abas[a])) rascunho.abas[a] = []; });
         salvarRascunho(); retorno("ok", "Cópia restaurada no rascunho. Aperte Atualizar app para publicar.");
       } catch (e) { retorno("erro", "Esse arquivo não é uma cópia de segurança do DIMAS."); }
@@ -452,7 +452,7 @@
     if (!novos.length) { retorno("erro", "Não encontrei e-mails na lista."); return; }
     const jaTem = new Set(usuariosAcesso.map((u) => u.email)), adicionar = novos.filter((u) => !jaTem.has(u.email));
     if (!adicionar.length) { retorno("info", "Todos esses e-mails já têm acesso."); return; }
-    if (!confirm("Liberar acesso de visualização para " + adicionar.length + " pessoa(s) e enviar o e-mail de criação de senha?")) return;
+    if (!(await DIMAS.confirmar("Liberar acesso de visualização para " + adicionar.length + " pessoa(s) e enviar o e-mail de criação de senha?", "Liberar e enviar"))) return;
     const botao = $("#convidar"); botao.disabled = true;
     const falhas = [], existentes = [];
     try {
@@ -482,7 +482,7 @@
       try { await DIMAS.enviarDefinicaoSenha(u.email); retorno("ok", "Convite reenviado para " + u.email + "."); } catch (e) { retorno("erro", "Não foi possível reenviar: " + e.message); }
     } else {
       const i = Number(b.dataset.removerAcesso), u = usuariosAcesso[i];
-      if (!confirm("Remover o acesso de " + u.email + "? A pessoa deixa de ver o app imediatamente.")) return;
+      if (!(await DIMAS.confirmar("Remover o acesso de " + u.email + "? A pessoa deixa de ver o app imediatamente.", "Remover acesso"))) return;
       const antes = usuariosAcesso.slice(); usuariosAcesso.splice(i, 1);
       try { await DIMAS.gravarAcesso(usuariosAcesso); desenharAcesso(); retorno("ok", "Acesso de " + u.email + " removido."); }
       catch (e) { usuariosAcesso = antes; retorno("erro", "Não foi possível remover: " + e.message); }
