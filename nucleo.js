@@ -80,8 +80,9 @@ window.DIMAS = (function () {
 
     const equipes = aba("EQUIPES", "TIMES").map((l) => {
       const c = leitor(l); const nome = c("Time", "Equipe"); const competicao = c("Competição", "Competições");
+      const elenco = c("Elenco") || nome; // nome do elenco: permite elencos diferentes da mesma equipe por competição
       return {
-        id: slug(competicao) + "--" + slug(nome), nome, competicao, competicaoId: slug(competicao),
+        id: slug(competicao) + "--" + slug(nome), nome, competicao, competicaoId: slug(competicao), elenco, elencoChave: chave(elenco),
         imagem: c("Time Imagem", "Imagem", "Escudo"),
         relatorio: c("Relatório de Adversário", "Relatório adversário", "Relatório"),
         preJogo: c("Material de Pré-jogo 1", "Material de Pré-jogo", "Análise do Adversário", "Vídeo"),
