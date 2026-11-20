@@ -352,7 +352,7 @@
         const campos = {}; for (const k of Object.keys(l)) if (k !== "_elenco" && k !== "Competição" && l[k] !== "") campos[k] = l[k];
         campos["Adversário"] = l._elenco;
         const alvo = acharAtleta(linhas("ADVERSÁRIOS").filter((a) => chave(a["Adversário"]) === chave(l._elenco)), l);
-        if (alvo) { const nomeAtual = alvo.Atleta; Object.assign(alvo, campos); alvo.Atleta = nomeAtual; atualizados++; // mantém o nome já cadastrado }
+        if (alvo) { const nomeAtual = alvo.Atleta; Object.assign(alvo, campos); alvo.Atleta = nomeAtual; atualizados++; } // mantém o nome já cadastrado
         else { if (!campos["Função"]) { campos["Função"] = "Sem função"; campos.Ordem = "9"; } linhas("ADVERSÁRIOS").push(campos); novos++; }
       }
       $("#importacao").close(); salvarRascunho();
