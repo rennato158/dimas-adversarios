@@ -9,7 +9,8 @@
   const CAMPOS = {
     CAMPEONATOS: [["Competições", "Nome", "texto", "larga"], ["Imagem Competições", "Imagem (link do Google Drive ou endereço da imagem)", "texto", "larga"]],
     EQUIPES: [["Time", "Nome", "texto"], ["Competição", "Competição", "competicao"], ["Time Imagem", "Escudo (link do Google Drive ou endereço da imagem)", "texto", "larga"],
-      ["Relatório de Adversário", "Relatório do adversário (link do Google Drive)", "texto", "larga"], ["Material de Pré-jogo 1", "Análise em vídeo (link do Google Drive ou YouTube)", "texto", "larga"]],
+      ["Relatório de Adversário", "Relatório do adversário (link do Google Drive)", "texto", "larga"], ["Material de Pré-jogo 1", "Análise em vídeo (link do Google Drive ou YouTube)", "texto", "larga"],
+      ["Elenco", "Nome do elenco (deixe vazio para usar o nome da equipe; preencha para ter um elenco próprio nesta competição)", "texto", "larga"]],
     "ADVERSÁRIOS": [["Atleta", "Nome", "texto"], ["Adversário", "Equipe", "equipe"], ["Função", "Função", "funcao"], ["Pé dominante", "Pé dominante", "pe"],
       ["Nascimento", "Nascimento (dd/mm/aaaa)", "texto"], ["Estatura", "Estatura (cm)", "texto"], ["Imagem", "Foto (link do Google Drive ou endereço da imagem)", "texto", "larga"],
       ["Video", "Vídeo (link do Google Drive ou YouTube)", "texto", "larga"], ["Histórico (site oGol)", "Histórico no oGol (link)", "texto", "larga"],
@@ -69,8 +70,9 @@
     filtroEquipes(); tabela(); pendencias(d);
   }
 
+  const elencoDe = (e) => (e && (e.Elenco || e.Time)) || "";
   function nomesEquipes() {
-    const nomes = linhas("EQUIPES").map((e) => e.Time).filter(Boolean);
+    const nomes = linhas("EQUIPES").map(elencoDe).filter(Boolean);
     linhas("ADVERSÁRIOS").forEach((a) => { if (a["Adversário"] && !nomes.some((n) => chave(n) === chave(a["Adversário"]))) nomes.push(a["Adversário"]); });
     return [...new Set(nomes)];
   }
@@ -95,7 +97,7 @@
     } else if (aba === "EQUIPES") {
       visiveis = todas.filter(({ l }) => !t || chave(l.Time + " " + l["Competição"]).includes(t));
       cab = "<th>Equipe</th><th>Competição</th><th>Atletas</th><th>Escudo</th><th>Relatório</th><th>Análise em vídeo</th>";
-      corpo = ({ l, i }) => '<tr data-i="' + i + '"><td>' + esc(l.Time) + "</td><td>" + esc(l["Competição"] || "—") + "</td><td>" + linhas("ADVERSÁRIOS").filter((a) => chave(a["Adversário"]) === chave(l.Time)).length + "</td>" +
+      corpo = ({ l, i }) => '<tr data-i="' + i + '"><td>' + esc(l.Time) + "</td><td>" + esc(l["Competição"] || "—") + "</td><td>" + linhas("ADVERSÁRIOS").filter((a) => chave(a["Adversário"]) === chave(elencoDe(l))).length + "</td>" +
         sn(l["Time Imagem"]) + sn(l["Relatório de Adversário"]) + sn(l["Material de Pré-jogo 1"]) + "</tr>";
     } else {
       visiveis = todas.filter(({ l }) => !t || chave(l["Competições"]).includes(t));
@@ -108,14 +110,14 @@
   }
 
   function pendencias(d) {
-    const nomes = new Set(d.equipes.map((e) => chave(e.nome))), comElenco = new Set(d.atletas.map((a) => a.equipeChave));
+    const nomes = new Set(d.equipes.map((e) => e.elencoChave)), comElenco = new Set(d.atletas.map((a) => a.equipeChave));
     const exemplos = (l, f) => l.slice(0, 6).map(f).join(", ") + (l.length > 6 ? "…" : "");
     const itens = [];
     const orfas = [...new Set(d.atletas.filter((a) => !nomes.has(a.equipeChave)).map((a) => a.equipe))];
     if (orfas.length) itens.push([orfas.length, "Equipes citadas em atletas mas não cadastradas (o elenco não aparece no app)", orfas.join(", ")]);
     const semComp = d.equipes.filter((e) => !d.competicoes.some((c) => c.id === e.competicaoId));
     if (semComp.length) itens.push([semComp.length, "Equipes sem competição válida (não aparecem no app)", exemplos(semComp, (e) => e.nome)]);
-    const semElenco = d.equipes.filter((e) => !comElenco.has(chave(e.nome)));
+    const semElenco = d.equipes.filter((e) => !comElenco.has(e.elencoChave));
     if (semElenco.length) itens.push([semElenco.length, "Equipes sem elenco cadastrado", exemplos(semElenco, (e) => e.nome)]);
     const semRel = d.equipes.filter((e) => !e.relatorio);
     if (semRel.length) itens.push([semRel.length, "Equipes sem relatório do adversário", exemplos(semRel, (e) => e.nome)]);
@@ -168,7 +170,7 @@
       l.Ordem = String(DIMAS.ordemDa(l["Função"]));
     }
     // renomear em cascata
-    if (!novo && aba === "EQUIPES" && antigo.Time !== l.Time) linhas("ADVERSÁRIOS").forEach((a) => { if (chave(a["Adversário"]) === chave(antigo.Time)) a["Adversário"] = l.Time; });
+    if (!novo && aba === "EQUIPES" && elencoDe(antigo) !== elencoDe(l) && !linhas("EQUIPES").some((x, i) => i !== indice && chave(elencoDe(x)) === chave(elencoDe(antigo)))) linhas("ADVERSÁRIOS").forEach((a) => { if (chave(a["Adversário"]) === chave(elencoDe(antigo))) a["Adversário"] = elencoDe(l); });
     if (!novo && aba === "CAMPEONATOS" && antigo["Competições"] !== l["Competições"]) linhas("EQUIPES").forEach((e) => { if (chave(e["Competição"]) === chave(antigo["Competições"])) e["Competição"] = l["Competições"]; });
     if (novo) linhas().push(l); else linhas()[indice] = l;
     $("#ficha").close(); salvarRascunho();
@@ -178,11 +180,12 @@
   function excluir(indice) {
     const l = linhas()[indice];
     let msg = "Excluir " + l[NOME[aba]] + "?";
-    const doTime = aba === "EQUIPES" ? linhas("ADVERSÁRIOS").filter((a) => chave(a["Adversário"]) === chave(l.Time)) : [];
+    const compartilhado = aba === "EQUIPES" && linhas("EQUIPES").some((x, i) => i !== indice && chave(elencoDe(x)) === chave(elencoDe(l)));
+    const doTime = aba === "EQUIPES" && !compartilhado ? linhas("ADVERSÁRIOS").filter((a) => chave(a["Adversário"]) === chave(elencoDe(l))) : [];
     if (doTime.length) msg = "Excluir " + l.Time + " e os " + doTime.length + " atletas cadastrados nela?";
     if (!confirm(msg)) return;
     linhas().splice(indice, 1);
-    if (doTime.length) rascunho.abas["ADVERSÁRIOS"] = linhas("ADVERSÁRIOS").filter((a) => chave(a["Adversário"]) !== chave(l.Time));
+    if (doTime.length) rascunho.abas["ADVERSÁRIOS"] = linhas("ADVERSÁRIOS").filter((a) => chave(a["Adversário"]) !== chave(elencoDe(l)));
     $("#ficha").close(); salvarRascunho();
     retorno("info", "Cadastro excluído. Aperte Atualizar app para publicar.");
   }
