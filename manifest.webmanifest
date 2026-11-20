@@ -1,6 +1,6 @@
 {
   "name": "DIMAS Adversários",
-  "short_name": "DIMAS",
+  "short_name": "DIMAS Adversários",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
