@@ -16,6 +16,7 @@
   --topo: rgba(10, 10, 10, 0.88);
   --tela: #000000;
   --marca: "Saira Condensed", "Arial Narrow", Impact, sans-serif;
+  --quadro: #262626; /* mesmo fundo das imagens de competição */
   --titulo: "Michroma", "Microgramma", "Eurostile", "Arial Black", sans-serif;
   --corpo: "Open Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
@@ -93,7 +94,9 @@ main { padding: 20px max(16px, env(safe-area-inset-right)) calc(40px + env(safe-
 .cartao:active { transform: scale(0.97); }
 .cartao .arte { width: 100%; aspect-ratio: 1; max-width: 132px; display: grid; place-items: center; }
 .cartao .arte img { width: 100%; height: 100%; object-fit: contain; border-radius: 12px; }
-.equipes .cartao .arte { max-width: 76px; }
+.equipes .cartao .arte { max-width: 76px; border-radius: 12px; overflow: hidden; background: var(--quadro); }
+/* escudos guardados na base vêm sem o quadro: ganham margem para ficar com a mesma proporção dos demais */
+img[data-doc="fotos-escudos"] { padding: 17%; box-sizing: border-box; }
 .cartao strong { font-weight: 600; font-size: 15px; line-height: 1.25; overflow-wrap: break-word; max-width: 100%; }
 .equipes .cartao { padding-left: 6px; padding-right: 6px; }
 .equipes .cartao strong { font-size: 14px; }
@@ -104,8 +107,8 @@ main { padding: 20px max(16px, env(safe-area-inset-right)) calc(40px + env(safe-
 
 /* ---------- equipe ---------- */
 .heroi { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; padding: 8px 0 18px; }
-.heroi .escudo { width: 104px; height: 104px; }
-.heroi .escudo img { width: 100%; height: 100%; object-fit: contain; }
+.heroi .escudo { width: 132px; height: 132px; display: grid; place-items: center; border-radius: 12px; overflow: hidden; background: var(--quadro); }
+.heroi .escudo img { width: 100%; height: 100%; object-fit: contain; border-radius: 12px; }
 .heroi h1 { font-size: 22px; }
 .heroi p { margin: 0; color: var(--suave); font-size: 14px; }
 .acoes { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 18px; }
