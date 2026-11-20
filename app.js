@@ -217,7 +217,8 @@
       else if (manual) aviso("Você já está com a versão mais recente.");
     } catch (e) {
       if (manual) aviso(navigator.onLine === false ? "Sem internet. Mostrando os dados salvos." : "Não foi possível atualizar agora.");
-      if (semDados) aviso(navigator.onLine === false ? "Sem internet. Conecte-se para baixar os dados." : "Não foi possível baixar os dados. Toque em atualizar para tentar de novo.");
+      if (e.codigo === "PERMISSION_DENIED") aviso("Seu acesso não está liberado. Fale com o DIMAS.");
+      else if (semDados) aviso(navigator.onLine === false ? "Sem internet. Conecte-se para baixar os dados." : "Não foi possível baixar os dados. Toque em atualizar para tentar de novo.");
     } finally { botao.classList.remove("girando"); if (estado.carregando) { estado.carregando = false; redesenhar(); } }
   }
 
@@ -347,7 +348,13 @@
     catch (e) { erro.textContent = e.message === "Failed to fetch" ? "Sem internet. Conecte-se para entrar pela primeira vez." : e.message; }
     finally { botao.disabled = false; botao.textContent = "Entrar"; }
   });
-  $("#sair").addEventListener("click", () => {
+  $("#esqueci").addEventListener("click", async () => {
+  const email = $("#entrada-email").value.trim(), erro = $("#entrada-erro");
+  if (!email) { erro.textContent = "Digite seu e-mail acima para receber o link de nova senha."; return; }
+  try { await DIMAS.enviarDefinicaoSenha(email); erro.textContent = ""; aviso("Se o e-mail tiver acesso, você vai receber um link para criar a senha."); }
+  catch (e) { erro.textContent = "Não foi possível enviar: " + e.message; }
+});
+$("#sair").addEventListener("click", () => {
     if (!confirm("Sair da conta neste aparelho?")) return;
     DIMAS.sair(); document.body.classList.add("bloqueado"); tela.innerHTML = ""; $("#sair").hidden = true; pedirLogin();
   });
