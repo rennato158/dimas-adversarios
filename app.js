@@ -354,8 +354,8 @@
   try { await DIMAS.enviarDefinicaoSenha(email); erro.textContent = ""; aviso("Se o e-mail tiver acesso, você vai receber um link para criar a senha."); }
   catch (e) { erro.textContent = "Não foi possível enviar: " + e.message; }
 });
-$("#sair").addEventListener("click", () => {
-    if (!confirm("Sair da conta neste aparelho?")) return;
+$("#sair").addEventListener("click", async () => {
+    if (!(await DIMAS.confirmar("Sair da conta neste aparelho?", "Sair"))) return;
     DIMAS.sair(); document.body.classList.add("bloqueado"); tela.innerHTML = ""; $("#sair").hidden = true; pedirLogin();
   });
   (function abertura() {
