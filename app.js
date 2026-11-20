@@ -26,6 +26,7 @@
   /* ---------- peças ---------- */
   const iniciais = (nome) => String(nome).trim().split(/\s+/).filter(Boolean).map((p) => p[0]).slice(0, 2).join("").toUpperCase();
   function avatar(a, largura) {
+    if (/^foto:/.test(a.imagem || "")) return '<span class="avatar">' + esc(iniciais(a.nome)) + '<img alt="" hidden data-foto="' + esc(a.imagem.slice(5)) + '" data-elenco="' + esc(a.equipe) + '"></span>';
     const src = imagem(a.imagem, largura || 160);
     return '<span class="avatar">' + esc(iniciais(a.nome)) + (src ? '<img loading="lazy" alt="" src="' + esc(src) + '" onerror="imgFalhou(this)">' : "") + "</span>";
   }
@@ -218,6 +219,20 @@
       if (semDados) aviso(navigator.onLine === false ? "Sem internet. Conecte-se para baixar os dados." : "Não foi possível baixar os dados. Toque em atualizar para tentar de novo.");
     } finally { botao.classList.remove("girando"); if (estado.carregando) { estado.carregando = false; redesenhar(); } }
   }
+
+  /* ---------- fotos importadas (guardadas na base, um documento por elenco) ---------- */
+  const fotosPorElenco = {};
+  function pintarFotos() {
+    const pendentes = [...document.querySelectorAll("img[data-foto][hidden]")];
+    const elencos = [...new Set(pendentes.map((i) => i.dataset.elenco))];
+    for (const elenco of elencos) {
+      const doc = "fotos-" + DIMAS.slug(elenco);
+      if (!fotosPorElenco[doc]) fotosPorElenco[doc] = DIMAS.lerDoc(doc, true).then((d) => (d && d.fotos) || {}).catch(() => { delete fotosPorElenco[doc]; return {}; });
+      fotosPorElenco[doc].then((fotos) => { document.querySelectorAll("img[data-foto][hidden]").forEach((img) => { if (img.dataset.elenco === elenco && fotos[img.dataset.foto]) { img.src = fotos[img.dataset.foto]; img.hidden = false; } }); });
+    }
+  }
+  let fotosT; const observarFotos = new MutationObserver(() => { clearTimeout(fotosT); fotosT = setTimeout(pintarFotos, 60); });
+  observarFotos.observe(tela, { childList: true, subtree: true }); observarFotos.observe($("#resultados"), { childList: true, subtree: true });
 
   /* ---------- edição do atleta (só administradores) ---------- */
   const CAMPOS_EDICAO = [
