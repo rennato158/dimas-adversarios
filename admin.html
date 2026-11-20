@@ -6,10 +6,11 @@
   <title>Painel DIMAS</title>
   <meta name="theme-color" content="#0a0a0a">
   <meta name="robots" content="noindex">
+  <script src="tema.js"></script>
   <link rel="icon" href="icone.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Michroma&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Michroma&family=Open+Sans:wght@400;600;700&family=Saira+Condensed:wght@600;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="estilo.css">
   <style>
     main { max-width: 1120px; }
@@ -25,7 +26,7 @@
     .botao.perigo { background: transparent; border: 1px solid var(--vermelho); color: var(--vermelho); }
     .botao.pequeno { min-height: 38px; padding: 6px 14px; font-size: 14px; }
     .selo { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: #4a3a12; color: #ffd27a; margin-left: 6px; }
-    .selo.ok { background: #153524; color: var(--verde); }
+    .selo.ok { background: #153524; color: #6fcf97; }
     .contagem { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 18px; }
     .contagem div { background: var(--painel-2); border-radius: 12px; padding: 12px; text-align: center; }
     .contagem b { display: block; font-family: var(--titulo); font-weight: 400; font-size: 20px; font-variant-numeric: tabular-nums; }
@@ -40,7 +41,7 @@
     .duas { display: grid; gap: 0 14px; grid-template-columns: 1fr; } @media (min-width: 620px) { .duas { grid-template-columns: 1fr 1fr; } }
     .larga { grid-column: 1 / -1; }
     details summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
-    ol { padding-left: 20px; color: #dcdcdc; max-width: 72ch; } ol li { margin: 6px 0; }
+    ol { padding-left: 20px; color: var(--texto-2); max-width: 72ch; } ol li { margin: 6px 0; }
     code, pre { background: var(--painel-2); border-radius: 8px; font-size: 13px; } code { padding: 1px 6px; } pre { padding: 12px; overflow-x: auto; white-space: pre; }
     .pendencias { list-style: none; margin: 0; padding: 0; }
     .pendencias li { padding: 10px 0; border-bottom: 1px solid var(--linha); display: flex; gap: 12px; align-items: baseline; }
@@ -69,6 +70,10 @@
       <img src="https://cdn.fanbase.com.br/fanhub/ceara/images/logo-ceara-vetor.svg" alt="" onerror="this.remove()">
       <b>DIMAS <span>PAINEL DE CONTROLE</span></b>
     </span>
+    <button class="icone" data-tema-alternar aria-label="Alternar tema claro ou escuro">
+      <svg class="so-escuro" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.900 4.900l1.400 1.400M17.700 17.700l1.400 1.400M2 12h2M20 12h2M4.900 19.100l1.400-1.400M17.700 6.300l1.400-1.400"/></svg>
+      <svg class="so-claro" viewBox="0 0 24 24"><path d="M20 14.500A8 8 0 0 1 9.500 4a8 8 0 1 0 10.500 10.500z"/></svg>
+    </button>
     <a class="botao contorno pequeno" href="index.html" target="_blank" rel="noopener">Abrir app</a>
   </header>
 
