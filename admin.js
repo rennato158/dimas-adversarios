@@ -31,13 +31,14 @@
 
   /* Traz a base online para este navegador. Sem dados locais, adota o rascunho online (ou a versão publicada). */
   async function sincronizar(perguntar) {
+    const semPendenciaLocal = !pendente(); // este navegador não tem edição própria esperando publicação
     try { publicado = await DIMAS.buscarPublicado(); } catch (e) { if (e.codigo === "PERMISSION_DENIED") throw e; }
     let remoto = null;
     try { remoto = await DIMAS.lerDoc("rascunho", true); } catch (e) { if (e.codigo === "PERMISSION_DENIED") throw e; }
     const online = !vazio(remoto) ? remoto : !vazio(publicado) ? { abas: copia(publicado.abas) } : null;
     if (!online) return "vazia";
     const igual = JSON.stringify(ABAS.map((a) => online.abas[a] || [])) === JSON.stringify(ABAS.map((a) => rascunho.abas[a]));
-    if (vazio(rascunho) || (!igual && perguntar && confirm("Este navegador tem um rascunho diferente da base online. OK para carregar a base online; Cancelar para manter o daqui."))) {
+    if (vazio(rascunho) || (!igual && semPendenciaLocal) || (!igual && perguntar && confirm("Este navegador tem um rascunho diferente da base online. OK para carregar a base online; Cancelar para manter o daqui."))) {
       rascunho = { abas: copia(online.abas) };
       ABAS.forEach((a) => { if (!Array.isArray(rascunho.abas[a])) rascunho.abas[a] = []; });
       guarda.gravar(CHAVES.rascunho, JSON.stringify(rascunho));
