@@ -53,8 +53,7 @@
       return '<a class="cartao" href="#/c/' + encodeURIComponent(c.id) + '"><span class="arte">' + arte(c.imagem, c.nome, 400) + "</span><strong>" + esc(c.nome) + "</strong><small>" + (n ? plural(n, "equipe", "equipes") : "Sem equipes") + "</small></a>";
     }).join("");
     tela.innerHTML = '<div class="cabecalho"><h1 class="titulo">Competições</h1>' + (ehAdmin() ? '<button type="button" class="botao contorno mini" data-acao="incluir-competicao">' + IC_MAIS + "Incluir competição</button>" : "") + "</div>" +
-      (cartoes ? '<div class="grade">' + cartoes + "</div>" : '<div class="vazio">' + (estado.carregando ? "Carregando dados…" : "Nenhuma competição cadastrada ainda.") + "</div>") +
-      '<p class="rodape">' + plural(dados.equipes.length, "equipe", "equipes") + " · " + plural(dados.atletas.length, "atleta", "atletas") + "<br>Atualizado em " + esc(dataHora(dados.publicadoEm)) + "</p>";
+      (cartoes ? '<div class="grade">' + cartoes + "</div>" : '<div class="vazio">' + (estado.carregando ? "Carregando dados…" : "Nenhuma competição cadastrada ainda.") + "</div>");
   }
 
   function telaCompeticao(id) {
