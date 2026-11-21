@@ -255,3 +255,11 @@ dialog.confirmacao { width: min(420px, calc(100vw - 32px)); background: var(--pa
 dialog.confirmacao::backdrop { background: rgba(0, 0, 0, 0.65); }
 dialog.confirmacao p { margin: 0 0 18px; line-height: 1.5; }
 .confirmacao-botoes { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+
+/* Organizar clubes (administrador) */
+.cabecalho-lado { display: flex; align-items: center; gap: 12px; }
+.botao.organizar { min-height: 36px; padding: 6px 12px; font-size: 13px; }
+.dica-organizar { color: var(--suave); font-size: 13px; margin: -6px 0 14px; }
+.grade.organizando .cartao { cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; border-style: dashed; border-color: var(--roxo); }
+.grade.organizando .cartao img { pointer-events: none; -webkit-user-drag: none; }
+.grade.organizando .cartao.arrastando { cursor: grabbing; opacity: 0.55; transform: scale(1.04); box-shadow: 0 8px 24px rgba(0,0,0,.4); }
