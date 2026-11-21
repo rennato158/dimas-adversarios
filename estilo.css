@@ -308,3 +308,9 @@ dialog.confirmacao p { margin: 0 0 18px; line-height: 1.5; }
 .linha-elenco { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 2px 0 12px; }
 .linha-elenco .filtro-funcao { margin: 0; flex: 1; min-width: 220px; }
 .incluir-atleta { margin-left: auto; }
+
+/* Administração de competições e equipes */
+.cabecalho .botao.mini { flex: none; }
+.acoes-admin { display: flex; flex-wrap: wrap; gap: 8px; margin: -6px 0 14px; }
+.heroi .botao.mini { margin-top: 2px; }
+.foto-editor.escudo .foto-previa img { object-fit: contain; padding: 10%; }
