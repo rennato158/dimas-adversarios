@@ -7,6 +7,9 @@
   const estado = { equipeNaTela: "", filtro: "", atleta: null, equipe: null };
   const ehAdmin = () => { const s = DIMAS.sessao(); const lista = ((window.DIMAS_CONFIG || {}).ADMINS || []).map((x) => String(x).toLowerCase()); return !!s && lista.includes(String(s.email || "").toLowerCase()); };
   const IC_LAPIS = '<svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/></svg>';
+  const IC_BUSCA_G = '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>';
+  const IC_COLAR = '<svg viewBox="0 0 24 24"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6"/></svg>';
+  const IC_ARQUIVO = '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 8"/></svg>';
   const IC_MOVER = '<svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg>';
 
   const SETA = '<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>';
@@ -320,7 +323,7 @@
   /* ---------- edição do atleta (só administradores) ---------- */
   const CAMPOS_EDICAO = [
     ["Atleta", "Nome", "texto"], ["Função", "Função", "funcao"], ["Pé dominante", "Pé dominante", "pe"], ["Nascimento", "Nascimento (dd/mm/aaaa)", "texto"],
-    ["Estatura", "Estatura (cm)", "texto"], ["Imagem", "Foto (link do Google Drive ou endereço da imagem)", "texto", "larga"],
+    ["Estatura", "Estatura (cm)", "texto"], ["Imagem", "Foto do atleta", "foto", "larga"],
     ["Video", "Vídeo (link do YouTube ou do Google Drive)", "texto", "larga"], ["Histórico (site oGol)", "Histórico no oGol (link)", "texto", "larga"],
     ["Análise Individual", "Características individuais", "area", "larga"], ["Ponto forte", "Pontos fortes (um por linha)", "area"], ["Ponto vulnerável", "Pontos vulneráveis (um por linha)", "area"],
   ];
@@ -338,16 +341,87 @@
       if (tipo === "area") entrada = '<textarea id="' + id + '" data-campo="' + esc(nome) + '" rows="4">' + esc(v) + "</textarea>";
       else if (tipo === "funcao") entrada = '<select id="' + id + '" data-campo="' + esc(nome) + '"><option value="">—</option>' + opcoes(DIMAS.FUNCOES, v === "Sem função" ? "" : v) + "</select>";
       else if (tipo === "pe") entrada = '<select id="' + id + '" data-campo="' + esc(nome) + '"><option value="">—</option>' + opcoes(["Destro", "Canhoto", "Ambidestro"], v) + "</select>";
+      else if (tipo === "foto") {
+        const guardada = /^foto:/.test(v) ? v : "";
+        const busca = "https://www.google.com/search?tbm=isch&q=" + encodeURIComponent(a.nome + " " + equipe.nome + " jogador");
+        const previa = guardada ? '<img alt="" hidden data-foto="' + esc(guardada.slice(5)) + '" data-doc="' + esc("fotos-" + DIMAS.slug(a.equipe)) + '">' : (imagem(v, 200) ? '<img alt="" src="' + esc(imagem(v, 200)) + '">' : "");
+        entrada = '<div class="foto-editor"><div class="foto-previa" id="foto-previa">' + previa + '<span>' + esc(iniciais(a.nome)) + "</span></div>" +
+          '<div class="foto-campos"><input type="text" id="' + id + '" data-campo="' + esc(nome) + '" data-guardada="' + esc(guardada) + '" value="' + esc(guardada ? "" : v) + '" placeholder="' + (guardada ? "Foto guardada. Cole um link ou uma imagem para trocar" : "Cole o link ou a imagem aqui") + '" autocomplete="off">' +
+          '<div class="foto-botoes"><a class="botao contorno mini" target="_blank" rel="noopener" href="' + esc(busca) + '">' + IC_BUSCA_G + "Buscar no Google</a>" +
+          '<button type="button" class="botao contorno mini" id="foto-colar">' + IC_COLAR + "Colar imagem</button>" +
+          '<button type="button" class="botao contorno mini" id="foto-arquivo-botao">' + IC_ARQUIVO + 'Arquivo</button><input type="file" accept="image/*" id="foto-arquivo" hidden>' +
+          '<button type="button" class="botao contorno mini" id="foto-remover">Remover</button></div><small id="foto-aviso"></small></div></div>';
+      }
       else entrada = '<input type="text" id="' + id + '" data-campo="' + esc(nome) + '" value="' + esc(v) + '" autocomplete="off">';
       return '<div class="' + (classe || "") + '"><label for="' + id + '">' + esc(rotulo) + "</label>" + entrada + "</div>";
     };
     caixa.innerHTML = '<form method="dialog" id="form-editor"><h2 class="titulo">Editar atleta</h2><p class="suave">' + esc(equipe.nome + " · " + equipe.competicao) + '</p><div class="editor-grade">' + CAMPOS_EDICAO.map(campo).join("") +
       '</div><p class="entrada-erro" id="editor-erro" role="alert"></p><div class="editor-rodape"><button type="button" class="botao contorno" id="editor-cancelar">Cancelar</button><button type="submit" class="botao" id="editor-salvar">Salvar e publicar</button></div></form>';
     $("#editor-cancelar").onclick = () => caixa.close();
+    ligarFoto(caixa);
     $("#form-editor").onsubmit = (ev) => { ev.preventDefault(); salvarEdicao(a, equipe); };
     caixa.showModal();
+    pintarFotos();
     const alvo = foco && caixa.querySelector('[data-campo="' + foco + '"]');
     if (alvo) { alvo.focus(); alvo.scrollIntoView({ block: "center" }); }
+  }
+  /* ---------- foto do atleta no editor: link, colar, arquivo ---------- */
+  const fotoEditor = { dados: "", removida: false };
+  // Recorta em quadrado (topo da imagem, onde fica o rosto) e reduz para 480 px em JPEG.
+  async function prepararFoto(fonte) {
+    const img = new Image();
+    if (typeof fonte === "string") img.crossOrigin = "anonymous";
+    img.src = typeof fonte === "string" ? fonte : URL.createObjectURL(fonte);
+    await img.decode();
+    const w = img.naturalWidth, h = img.naturalHeight, lado = Math.min(w, h), saida = Math.min(480, lado);
+    const tela2 = document.createElement("canvas"); tela2.width = tela2.height = saida;
+    const ctx = tela2.getContext("2d"); ctx.fillStyle = "#262626"; ctx.fillRect(0, 0, saida, saida);
+    ctx.drawImage(img, (w - lado) / 2, h > w ? 0 : (h - lado) / 2, lado, lado, 0, 0, saida, saida);
+    return tela2.toDataURL("image/jpeg", 0.86); // falha se o site da imagem não permitir cópia
+  }
+  function ligarFoto(caixa) {
+    const campo = caixa.querySelector('[data-campo="Imagem"]'); if (!campo) return;
+    fotoEditor.dados = ""; fotoEditor.removida = false;
+    const previa = $("#foto-previa"), aviso = $("#foto-aviso");
+    const mostrar = (src, msg) => { previa.querySelector("img") && previa.querySelector("img").remove(); if (src) previa.insertAdjacentHTML("afterbegin", '<img alt="" src="' + esc(src) + '">'); aviso.textContent = msg || ""; };
+    const usarImagem = async (blob) => {
+      aviso.textContent = "Preparando a imagem…";
+      try { fotoEditor.dados = await prepararFoto(blob); fotoEditor.removida = false; campo.value = ""; mostrar(fotoEditor.dados, "Imagem pronta. Toque em Salvar e publicar."); }
+      catch (e) { aviso.textContent = "Não foi possível ler essa imagem."; }
+    };
+    campo.addEventListener("paste", (ev) => {
+      const item = [...(ev.clipboardData ? ev.clipboardData.items : [])].find((i) => /^image\//.test(i.type));
+      if (item) { ev.preventDefault(); usarImagem(item.getAsFile()); }
+    });
+    campo.addEventListener("input", () => { fotoEditor.dados = ""; const u = campo.value.trim(); if (/^https?:\/\//.test(u)) mostrar(imagem(u, 200), "Link da imagem. Ao salvar, a foto é copiada para a base quando o site permitir."); });
+    $("#foto-colar").onclick = async () => {
+      try {
+        if (navigator.clipboard && navigator.clipboard.read) {
+          for (const item of await navigator.clipboard.read()) {
+            const tipo = item.types.find((t) => /^image\//.test(t));
+            if (tipo) return usarImagem(await item.getType(tipo));
+          }
+        }
+        const texto = navigator.clipboard && navigator.clipboard.readText ? (await navigator.clipboard.readText()).trim() : "";
+        if (/^https?:\/\//.test(texto)) { campo.value = texto; campo.dispatchEvent(new Event("input")); return; }
+        aviso.textContent = "Nada para colar. Copie uma imagem (ou o link dela) e tente de novo.";
+      } catch (e) { aviso.textContent = "O aparelho não liberou a área de transferência. Toque no campo acima e use Colar."; }
+    };
+    $("#foto-arquivo-botao").onclick = () => $("#foto-arquivo").click();
+    $("#foto-arquivo").onchange = (ev) => { const f = ev.target.files && ev.target.files[0]; if (f) usarImagem(f); };
+    $("#foto-remover").onclick = () => { fotoEditor.dados = ""; fotoEditor.removida = true; campo.value = ""; campo.dataset.guardada = ""; mostrar("", "A foto será removida ao salvar."); };
+  }
+  // Grava a imagem no documento de fotos do elenco e devolve a referência "foto:chave".
+  async function guardarFoto(a, dadosImg, antiga) {
+    const doc = "fotos-" + DIMAS.slug(a.equipe);
+    let pacote; try { pacote = await DIMAS.lerDoc(doc, true); } catch (e) { pacote = {}; }
+    pacote.fotos = pacote.fotos || {};
+    if (antiga && /^foto:/.test(antiga)) delete pacote.fotos[antiga.slice(5)];
+    const chaveFoto = DIMAS.slug(a.nome) + "-" + Date.now().toString(36);
+    pacote.fotos[chaveFoto] = dadosImg;
+    await DIMAS.gravarDoc(doc, pacote);
+    delete fotosPorElenco[doc];
+    return "foto:" + chaveFoto;
   }
   async function salvarEdicao(a, equipe) {
     const erro = $("#editor-erro"), botao = $("#editor-salvar"), novos = {};
@@ -360,6 +434,14 @@
     const aplicar = (pacote) => { const l = acharLinha(pacote, a); if (!l) return false; Object.assign(l, novos); return true; };
     erro.textContent = ""; botao.disabled = true; botao.textContent = "Salvando…";
     try {
+      const campoFoto = document.querySelector('#form-editor [data-campo="Imagem"]');
+      if (campoFoto) {
+        const guardada = campoFoto.dataset.guardada || "";
+        let dadosImg = fotoEditor.dados;
+        if (!dadosImg && /^https?:\/\//.test(novos.Imagem) && !DIMAS.driveId(novos.Imagem)) { try { dadosImg = await prepararFoto(novos.Imagem); } catch (e) {} } // copia o link para a base quando o site deixa
+        if (dadosImg) novos.Imagem = await guardarFoto(a, dadosImg, guardada || (acharLinha(DIMAS.pacoteLocal(), a) || {}).Imagem);
+        else if (!novos.Imagem && guardada && !fotoEditor.removida) novos.Imagem = guardada;
+      }
       const publicado = await DIMAS.lerDoc("publicado", true); // parte sempre da versão mais recente
       if (!aplicar(publicado)) throw new Error("Este atleta não está mais na base. Atualize o app e tente de novo.");
       publicado.publicadoEm = new Date().toISOString();
