@@ -1,6 +1,6 @@
 /* Guarda o app no aparelho para abrir sem internet.
    Rede primeiro, sempre conferindo se há versão nova; a cópia guardada só é usada sem internet. */
-const CACHE = "dimas-v22";
+const CACHE = "dimas-v23";
 const ARQUIVOS = ["./", "index.html", "estilo.css", "app.js", "nucleo.js", "tema.js", "config.js", "icone.svg", "logo-dimas.png", "manifest.webmanifest"];
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ARQUIVOS.map((u) => new Request(u, { cache: "reload" })))).then(() => self.skipWaiting()));
