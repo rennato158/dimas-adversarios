@@ -141,10 +141,10 @@
     const media = (v) => (v.length ? v.reduce((s, x) => s + x, 0) / v.length : 0);
     const idade = media(lista.map((a) => a.idade).filter(Boolean));
     const alt = media(lista.map((a) => a.estaturaCm).filter(Boolean));
-    const canhotos = lista.filter((a) => chave(a.pe) === "canhoto").length;
+    const sub23 = lista.filter((a) => a.idade && a.idade < 23).length; // atletas com até 22 anos
     const item = (v, r) => "<div><b>" + v + "</b><span>" + r + "</span></div>";
     return '<div class="numeros">' + item(lista.length, "Atletas") + item(idade ? idade.toFixed(1).replace(".", ",") : "—", "Idade média") +
-      item(alt ? (alt / 100).toFixed(2).replace(".", ",") : "—", "Altura média") + item(canhotos, "Canhotos") + "</div>";
+      item(alt ? (alt / 100).toFixed(2).replace(".", ",") : "—", "Altura média") + item(sub23, "Sub-23") + "</div>";
   }
 
   // Título da seção no plural: Goleiros, Laterais, Zagueiros, Volantes, Meias, Extremos, Atacantes…
