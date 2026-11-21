@@ -303,3 +303,8 @@ dialog.confirmacao p { margin: 0 0 18px; line-height: 1.5; }
 /* Editor: excluir atleta */
 .editor-rodape .perigo { margin-right: auto; color: var(--vermelho); border-color: color-mix(in srgb, var(--vermelho) 45%, transparent); }
 .editor-rodape .perigo:hover { border-color: var(--vermelho); }
+
+/* Elenco: filtro + incluir atleta */
+.linha-elenco { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 2px 0 12px; }
+.linha-elenco .filtro-funcao { margin: 0; flex: 1; min-width: 220px; }
+.incluir-atleta { margin-left: auto; }
