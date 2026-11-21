@@ -641,6 +641,11 @@
     return { equipes: saem.length, atletas: atletas.length - pacote.abas["ADVERSÁRIOS"].length };
   }
 
+  // Apaga do documento de escudos as imagens guardadas ("escudo:chave") que não são mais usadas.
+  async function apagarEscudos(valores) {
+    const chaves = valores.filter((v) => /^escudo:/.test(v || "")).map((v) => v.slice(7)); if (!chaves.length) return;
+    try { const f = await DIMAS.lerDoc("fotos-escudos", true); chaves.forEach((k) => delete (f.fotos || {})[k]); await DIMAS.gravarDoc("fotos-escudos", f); delete fotosPorElenco["fotos-escudos"]; } catch (e) {}
+  }
   function formCompeticao(c) {
     const linha = c ? (aba(DIMAS.pacoteLocal(), "CAMPEONATOS").find((l) => DIMAS.slug(nomeComp(l)) === c.id) || {}) : {};
     const nEquipes = c ? dados.equipes.filter((e) => e.competicaoId === c.id).length : 0;
@@ -671,10 +676,12 @@
       excluir: c && (async () => {
         const nAtletas = dados.atletas.filter((a) => dados.equipes.some((e) => e.competicaoId === c.id && e.elencoChave === a.equipeChave)).length;
         if (!(await DIMAS.confirmar("Excluir a competição " + c.nome + "? Saem também " + plural(nEquipes, "equipe", "equipes") + " e os elencos delas (até " + plural(nAtletas, "atleta", "atletas") + "). Não dá para desfazer.", "Excluir"))) return false;
+        const imagens = [linha["Imagem Competições"]].concat(aba(DIMAS.pacoteLocal(), "EQUIPES").filter((l) => DIMAS.slug(compDaEquipe(l)) === c.id).map((l) => l["Time Imagem"]));
         await mudarBase((p) => {
           p.abas["CAMPEONATOS"] = aba(p, "CAMPEONATOS").filter((l) => DIMAS.slug(nomeComp(l)) !== c.id);
           tirarEquipes(p, (l) => DIMAS.slug(compDaEquipe(l)) === c.id);
         });
+        await apagarEscudos(imagens);
         ir("#/"); aviso("Competição " + c.nome + " excluída.");
         return true;
       }),
@@ -716,6 +723,7 @@
         const compartilhado = dados.equipes.some((x) => x.id !== e.id && x.elencoChave === e.elencoChave);
         if (!(await DIMAS.confirmar("Excluir " + e.nome + " de " + comp.nome + "?" + (n && !compartilhado ? " Sai também o elenco (" + plural(n, "atleta", "atletas") + ")." : "") + " Não dá para desfazer.", "Excluir"))) return false;
         await mudarBase((p) => { tirarEquipes(p, (l) => DIMAS.slug(compDaEquipe(l)) === e.competicaoId && DIMAS.slug(nomeTime(l)) === DIMAS.slug(e.nome)); });
+        await apagarEscudos([linha["Time Imagem"]]);
         ir("#/c/" + encodeURIComponent(comp.id)); aviso(e.nome + " excluída de " + comp.nome + ".");
         return true;
       }),
