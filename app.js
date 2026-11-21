@@ -187,7 +187,7 @@
     const textos = bloco("Características individuais", a.analise) + (pontos ? '<div class="pontos">' + pontos + "</div>" : "");
     const conteudo = video + (textos || '<div class="sem-analise">Análise individual ainda não cadastrada.' + (ehAdmin() ? ' <button class="link" data-editar="Análise Individual">Cadastrar agora</button>' : "") + "</div>");
     const dado = (r, val) => "<div><span>" + r + "</span><b>" + esc(val || "—") + "</b></div>";
-    const acoes = (ogol ? '<a class="botao contorno mini" target="_blank" rel="noopener" href="' + esc(ogol.externo) + '">' + IC_LINK + "Histórico no oGol</a>" : "") +
+    const acoes = (ogol ? '<a class="botao contorno mini" target="_blank" rel="noopener" href="' + esc(ogol.externo) + '">' + IC_LINK + "Histórico</a>" : "") +
       (ehAdmin() ? '<button class="botao contorno mini editar-atleta" data-editar="Atleta" title="Editar atleta">' + IC_LAPIS + "Editar</button>" : "");
     return '<div class="ficha-topo">' + avatar(a, 400) + '<div class="ficha-id"><h2 class="titulo">' + esc(a.nome) + '</h2><p><span class="etiqueta">' + esc(a.funcao) + "</span><span>" + esc(equipe.nome) + "</span></p>" +
       (acoes ? '<div class="ficha-acoes">' + acoes + "</div>" : "") + "</div></div>" +
