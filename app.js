@@ -178,7 +178,7 @@
     const bloco = (titulo, texto, classe) => {
       if (!texto) return "";
       const li = itens(texto);
-      return '<section class="bloco ' + (classe || "") + '"><h3>' + titulo + "</h3>" + (classe && li.length > 1 ? "<ul>" + li.map((x) => "<li>" + esc(x) + "</li>").join("") + "</ul>" : "<p>" + esc(texto) + "</p>") + "</section>";
+      return '<section class="bloco ' + (classe || "") + '"><h3>' + titulo + "</h3>" + (classe ? '<ul class="topicos">' + li.map((x) => "<li>" + esc(x.charAt(0).toUpperCase() + x.slice(1).replace(/\.$/, "")) + "</li>").join("") + "</ul>" : "<p>" + esc(texto) + "</p>") + "</section>";
     };
     const v = midia(a.video);
     let video = "";
@@ -360,9 +360,10 @@
       return '<div class="' + (classe || "") + '"><label for="' + id + '">' + esc(rotulo) + "</label>" + entrada + "</div>";
     };
     caixa.innerHTML = '<form method="dialog" id="form-editor"><h2 class="titulo">Editar atleta</h2><p class="suave">' + esc(equipe.nome + " · " + equipe.competicao) + '</p><div class="editor-grade">' + CAMPOS_EDICAO.map(campo).join("") +
-      '</div><p class="entrada-erro" id="editor-erro" role="alert"></p><div class="editor-rodape"><button type="button" class="botao contorno" id="editor-cancelar">Cancelar</button><button type="submit" class="botao" id="editor-salvar">Salvar e publicar</button></div></form>';
+      '</div><p class="entrada-erro" id="editor-erro" role="alert"></p><div class="editor-rodape"><button type="button" class="botao contorno perigo" id="editor-excluir">Excluir atleta</button><button type="button" class="botao contorno" id="editor-cancelar">Cancelar</button><button type="submit" class="botao" id="editor-salvar">Salvar e publicar</button></div></form>';
     $("#editor-cancelar").onclick = () => caixa.close();
     ligarFoto(caixa);
+    $("#editor-excluir").onclick = () => excluirAtleta(a, equipe);
     $("#form-editor").onsubmit = (ev) => { ev.preventDefault(); salvarEdicao(a, equipe); };
     caixa.showModal();
     pintarFotos();
@@ -479,6 +480,34 @@
     await DIMAS.gravarDoc(doc, pacote);
     delete fotosPorElenco[doc];
     return "foto:" + chaveFoto;
+  }
+  // Exclui o atleta do elenco (app publicado e rascunho do painel) e apaga a foto guardada dele.
+  async function excluirAtleta(a, equipe) {
+    if (!(await DIMAS.confirmar("Excluir " + a.nome + " do elenco do " + equipe.nome + "? A ficha, a análise e a foto dele serão apagadas.", "Excluir"))) return;
+    const erro = $("#editor-erro"), botao = $("#editor-excluir");
+    botao.disabled = true; botao.textContent = "Excluindo…"; erro.textContent = "";
+    const tirar = (pacote) => { const lista = (pacote.abas || {})["ADVERSÁRIOS"] || []; const l = acharLinha(pacote, a); if (!l) return null; lista.splice(lista.indexOf(l), 1); return l; };
+    try {
+      const publicado = await DIMAS.lerDoc("publicado", true);
+      const linha = tirar(publicado);
+      if (!linha) throw new Error("Este atleta não está mais na base. Atualize o app.");
+      publicado.publicadoEm = new Date().toISOString();
+      await DIMAS.gravarDoc("publicado", publicado);
+      try { const rascunho = await DIMAS.lerDoc("rascunho", true); if (tirar(rascunho)) await DIMAS.gravarDoc("rascunho", rascunho); } catch (e) {}
+      if (/^foto:/.test(linha.Imagem || "")) {
+        try { const doc = "fotos-" + DIMAS.slug(a.equipe), f = await DIMAS.lerDoc(doc, true); if (f.fotos) { delete f.fotos[linha.Imagem.slice(5)]; await DIMAS.gravarDoc(doc, f); delete fotosPorElenco[doc]; } } catch (e) {}
+      }
+      DIMAS.guarda.gravar(DIMAS.CHAVES.dados, JSON.stringify(publicado));
+      dados = DIMAS.normalizar(publicado);
+      $("#editor").close();
+      estado.equipeNaTela = "";
+      const destino = "#/e/" + encodeURIComponent(equipe.id);
+      if (location.hash === destino) rota(); else location.hash = destino;
+      aviso(a.nome + " foi excluído do elenco.");
+    } catch (e) {
+      erro.textContent = e.message === "Failed to fetch" ? "Sem internet. Nada foi excluído." : "Não foi possível excluir: " + e.message;
+      botao.disabled = false; botao.textContent = "Excluir atleta";
+    }
   }
   async function salvarEdicao(a, equipe) {
     const erro = $("#editor-erro"), botao = $("#editor-salvar"), novos = {};
