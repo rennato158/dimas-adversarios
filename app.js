@@ -7,6 +7,7 @@
   const estado = { equipeNaTela: "", filtro: "", atleta: null, equipe: null };
   const ehAdmin = () => { const s = DIMAS.sessao(); const lista = ((window.DIMAS_CONFIG || {}).ADMINS || []).map((x) => String(x).toLowerCase()); return !!s && lista.includes(String(s.email || "").toLowerCase()); };
   const IC_LAPIS = '<svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM14 6l4 4"/></svg>';
+  const IC_MOVER = '<svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg>';
 
   const SETA = '<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>';
   const IC_VIDEO = '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.500v5l4.500-2.500z"/></svg>';
@@ -57,10 +58,83 @@
     const equipes = dados.equipes.filter((e) => e.competicaoId === id);
     const cartoes = equipes.map((e) => {
       const n = atletasDa(e).length;
-      return '<a class="cartao" href="#/e/' + encodeURIComponent(e.id) + '"><span class="arte">' + arte(e.imagem, e.nome, 200) + "</span><strong>" + esc(e.nome) + "</strong>" + (n ? "<small>" + plural(n, "atleta", "atletas") + "</small>" : "") + "</a>";
+      return '<a class="cartao" data-equipe="' + esc(e.id) + '" href="#/e/' + encodeURIComponent(e.id) + '"><span class="arte">' + arte(e.imagem, e.nome, 200) + "</span><strong>" + esc(e.nome) + "</strong>" + (n ? "<small>" + plural(n, "atleta", "atletas") + "</small>" : "") + "</a>";
     }).join("");
-    tela.innerHTML = '<div class="cabecalho"><h1 class="titulo">' + esc(c.nome) + "</h1><small>" + plural(equipes.length, "equipe", "equipes") + "</small></div>" +
+    const organizar = ehAdmin() && equipes.length > 1
+      ? '<button class="botao contorno organizar" id="organizar" type="button">' + IC_MOVER + "<span>Organizar</span></button>" : "";
+    tela.innerHTML = '<div class="cabecalho"><h1 class="titulo">' + esc(c.nome) + '</h1><div class="cabecalho-lado"><small>' + plural(equipes.length, "equipe", "equipes") + "</small>" + organizar + "</div></div>" +
+      (organizar ? '<p class="dica-organizar" hidden>Arraste os clubes para mudar a ordem e toque em Concluir.</p>' : "") +
       (cartoes ? '<div class="grade equipes">' + cartoes + "</div>" : '<div class="vazio">Nenhuma equipe cadastrada nesta competição.</div>');
+    if (organizar) $("#organizar").onclick = () => alternarOrganizar(c);
+  }
+
+  /* ---------- organizar clubes (só administrador): arrastar os cartões e gravar a ordem ---------- */
+  function alternarOrganizar(c) {
+    const grade = tela.querySelector(".grade.equipes"), botao = $("#organizar"), dica = tela.querySelector(".dica-organizar");
+    if (!grade.classList.contains("organizando")) {
+      grade.classList.add("organizando"); dica.hidden = false;
+      botao.classList.remove("contorno"); botao.querySelector("span").textContent = "Concluir";
+      grade.dataset.inicial = ordemNaTela(grade).join("|");
+      return;
+    }
+    const nova = ordemNaTela(grade);
+    grade.classList.remove("organizando"); dica.hidden = true;
+    botao.classList.add("contorno"); botao.querySelector("span").textContent = "Organizar";
+    if (nova.join("|") !== grade.dataset.inicial) salvarOrdem(c, nova, botao);
+  }
+  const ordemNaTela = (grade) => [...grade.querySelectorAll("[data-equipe]")].map((el) => el.dataset.equipe);
+
+  let arrasto = null;
+  tela.addEventListener("pointerdown", (ev) => {
+    const cartao = ev.target.closest(".organizando [data-equipe]");
+    if (!cartao || ev.button > 0) return;
+    ev.preventDefault();
+    arrasto = { cartao, id: ev.pointerId };
+    cartao.classList.add("arrastando");
+    cartao.setPointerCapture(ev.pointerId);
+  });
+  tela.addEventListener("pointermove", (ev) => {
+    if (!arrasto || ev.pointerId !== arrasto.id) return;
+    ev.preventDefault();
+    const baixo = document.elementFromPoint(ev.clientX, ev.clientY);
+    const alvo = baixo && baixo.closest(".organizando [data-equipe]");
+    if (!alvo || alvo === arrasto.cartao) return;
+    const r = alvo.getBoundingClientRect(), grade = alvo.parentElement;
+    const depois = ev.clientX > r.left + r.width / 2;
+    grade.insertBefore(arrasto.cartao, depois ? alvo.nextSibling : alvo);
+  });
+  const soltar = (ev) => { if (!arrasto || ev.pointerId !== arrasto.id) return; arrasto.cartao.classList.remove("arrastando"); arrasto = null; };
+  tela.addEventListener("pointerup", soltar);
+  tela.addEventListener("pointercancel", soltar);
+  tela.addEventListener("click", (ev) => { if (ev.target.closest(".organizando [data-equipe]")) ev.preventDefault(); }, true);
+
+  async function salvarOrdem(c, ids, botao) {
+    // Reordena só as linhas desta competição na aba EQUIPES, mantendo as demais onde estão.
+    const aplicar = (pacote) => {
+      const linhas = (pacote.abas || {})["EQUIPES"] || [];
+      const comp = (l) => DIMAS.slug(l["Competição"] || l["Competições"] || "") === c.id;
+      const idDe = (l) => c.id + "--" + DIMAS.slug(l.Time || l.Equipe || "");
+      const posicoes = [], dela = [];
+      linhas.forEach((l, i) => { if (comp(l)) { posicoes.push(i); dela.push(l); } });
+      const peso = (l) => { const p = ids.indexOf(idDe(l)); return p < 0 ? ids.length : p; };
+      const ordenadas = dela.slice().sort((a, b) => peso(a) - peso(b));
+      posicoes.forEach((p, k) => { linhas[p] = ordenadas[k]; });
+      return dela.length > 0;
+    };
+    botao.disabled = true;
+    try {
+      const publicado = await DIMAS.lerDoc("publicado", true);
+      if (!aplicar(publicado)) throw new Error("competição não encontrada na base");
+      publicado.publicadoEm = new Date().toISOString();
+      await DIMAS.gravarDoc("publicado", publicado);
+      try { const rascunho = await DIMAS.lerDoc("rascunho", true); if (aplicar(rascunho)) await DIMAS.gravarDoc("rascunho", rascunho); } catch (e) {}
+      DIMAS.guarda.gravar(DIMAS.CHAVES.dados, JSON.stringify(publicado));
+      dados = DIMAS.normalizar(publicado);
+      aviso("Nova ordem dos clubes publicada.");
+    } catch (e) {
+      aviso(e.message === "Failed to fetch" ? "Sem internet. A nova ordem não foi salva." : "Não foi possível salvar a ordem: " + e.message);
+      redesenhar();
+    } finally { botao.disabled = false; }
   }
 
   function numeros(lista) {
