@@ -648,6 +648,7 @@
   }
   function formCompeticao(c) {
     const linha = c ? (aba(DIMAS.pacoteLocal(), "CAMPEONATOS").find((l) => DIMAS.slug(nomeComp(l)) === c.id) || {}) : {};
+    const nEquipes = c ? dados.equipes.filter((e) => e.competicaoId === c.id).length : 0;
     abrirFormulario({
       titulo: c ? "Editar competição" : "Incluir competição",
       campos: [
@@ -671,6 +672,19 @@
         ir("#/c/" + encodeURIComponent(novoId));
         aviso(c ? "Competição atualizada e publicada." : "Competição incluída. Agora inclua as equipes.");
       },
+      rotuloExcluir: "Excluir competição",
+      excluir: c && (async () => {
+        const nAtletas = dados.atletas.filter((a) => dados.equipes.some((e) => e.competicaoId === c.id && e.elencoChave === a.equipeChave)).length;
+        if (!(await DIMAS.confirmar("Excluir a competição " + c.nome + "? Saem também " + plural(nEquipes, "equipe", "equipes") + " e os elencos delas (até " + plural(nAtletas, "atleta", "atletas") + "). Não dá para desfazer.", "Excluir"))) return false;
+        const imagens = [linha["Imagem Competições"]].concat(aba(DIMAS.pacoteLocal(), "EQUIPES").filter((l) => DIMAS.slug(compDaEquipe(l)) === c.id).map((l) => l["Time Imagem"]));
+        await mudarBase((p) => {
+          p.abas["CAMPEONATOS"] = aba(p, "CAMPEONATOS").filter((l) => DIMAS.slug(nomeComp(l)) !== c.id);
+          tirarEquipes(p, (l) => DIMAS.slug(compDaEquipe(l)) === c.id);
+        });
+        await apagarEscudos(imagens);
+        ir("#/"); aviso("Competição " + c.nome + " excluída.");
+        return true;
+      }),
     });
   }
 
