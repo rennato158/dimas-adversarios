@@ -189,8 +189,7 @@
     return '<div class="ficha-topo">' + avatar(a, 400) + '<h2 class="titulo">' + esc(a.nome) + '</h2><span class="etiqueta">' + esc(a.funcao) + "</span><p>" + esc(equipe.nome) + "</p>" + (ehAdmin() ? '<button class="botao contorno editar-atleta" data-editar="Atleta">' + IC_LAPIS + "Editar atleta</button>" : "") + "</div>" +
       '<div class="tres">' + dado("Idade", a.idade ? a.idade + " anos" : "") + dado("Estatura", a.estatura) + dado("Pé dominante", a.pe) + "</div>" +
       conteudo +
-      (ogol ? '<a class="botao contorno" style="margin-top:12px;width:100%;justify-content:center" target="_blank" rel="noopener" href="' + esc(ogol.externo) + '">' + IC_LINK + "Histórico no oGol</a>" : "") +
-      (a.sofa ? '<section class="bloco historico" hidden data-hist="' + esc(a.sofa) + '" data-doc="' + esc("historico-" + DIMAS.slug(a.equipe)) + '"></section>' : "");
+      (ogol ? '<a class="botao contorno" style="margin-top:12px;width:100%;justify-content:center" target="_blank" rel="noopener" href="' + esc(ogol.externo) + '">' + IC_LINK + "Histórico no oGol</a>" : "");
   }
 
   function telaEquipe(equipeId, atletaId) {
@@ -312,28 +311,7 @@
       });
     }
   }
-  /* ---------- histórico das últimas 3 temporadas (guardado por elenco: dimas/historico-<elenco>) ---------- */
-  const historicoPorElenco = {};
-  const numero = (v) => Number(v || 0).toLocaleString("pt-BR");
-  function pintarHistorico() {
-    document.querySelectorAll("section.historico[hidden]:not([data-lido])").forEach((caixa) => {
-      caixa.dataset.lido = "1";
-      const doc = caixa.dataset.doc;
-      if (!historicoPorElenco[doc]) historicoPorElenco[doc] = DIMAS.lerDoc(doc, true).then((d) => (d && d.atletas) || {}).catch(() => { delete historicoPorElenco[doc]; return {}; });
-      historicoPorElenco[doc].then((todos) => {
-        const linhas = todos[caixa.dataset.hist];
-        if (!linhas || !linhas.length) return;
-        const tot = linhas.reduce((t, l) => [t[0] + l[3], t[1] + l[4], t[2] + l[5], t[3] + l[6]], [0, 0, 0, 0]);
-        caixa.innerHTML = "<h3>Histórico · últimas 3 temporadas</h3>" +
-          '<div class="tabela-rolagem"><table class="tabela-hist"><thead><tr><th>Ano</th><th>Clube</th><th>Competição</th><th class="n" title="Jogos">J</th><th class="n" title="Minutos">Min</th><th class="n" title="Gols">G</th><th class="n" title="Assistências">A</th></tr></thead><tbody>' +
-          linhas.map((l) => "<tr><td>" + esc(l[0]) + "</td><td>" + esc(l[1]) + "</td><td>" + esc(l[2]) + '</td><td class="n">' + numero(l[3]) + '</td><td class="n">' + numero(l[4]) + '</td><td class="n">' + numero(l[5]) + '</td><td class="n">' + numero(l[6]) + "</td></tr>").join("") +
-          '</tbody><tfoot><tr><td colspan="3">Total</td><td class="n">' + numero(tot[0]) + '</td><td class="n">' + numero(tot[1]) + '</td><td class="n">' + numero(tot[2]) + '</td><td class="n">' + numero(tot[3]) + "</td></tr></tfoot></table></div>" +
-          '<p class="fonte">J = jogos · Min = minutos · G = gols · A = assistências. Fonte: SofaScore.</p>';
-        caixa.hidden = false;
-      });
-    });
-  }
-  let fotosT; const observarFotos = new MutationObserver(() => { clearTimeout(fotosT); fotosT = setTimeout(() => { pintarFotos(); pintarHistorico(); }, 60); });
+  let fotosT; const observarFotos = new MutationObserver(() => { clearTimeout(fotosT); fotosT = setTimeout(pintarFotos, 60); });
   observarFotos.observe(tela, { childList: true, subtree: true }); observarFotos.observe($("#resultados"), { childList: true, subtree: true });
 
   /* ---------- edição do atleta (só administradores) ---------- */
