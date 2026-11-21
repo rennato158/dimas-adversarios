@@ -147,6 +147,8 @@
       item(alt ? (alt / 100).toFixed(2).replace(".", ",") : "—", "Altura média") + item(canhotos, "Canhotos") + "</div>";
   }
 
+  // Título da seção no plural: Goleiros, Laterais, Zagueiros, Volantes, Meias, Extremos, Atacantes…
+  const plural_funcao = (f) => /^sem /i.test(f) ? f : /al$/i.test(f) ? f.slice(0, -2) + "ais" : /or$/i.test(f) ? f + "es" : /[aeiou]$/i.test(f) ? f + "s" : f;
   function htmlElenco(equipe, lista, atletaId) {
     const grupos = [];
     for (const a of lista) {
@@ -155,7 +157,7 @@
       if (!g) grupos.push((g = { nome: a.funcao, itens: [] }));
       g.itens.push(a);
     }
-    return grupos.map((g) => '<h3 class="secao">' + esc(g.nome) + "<span>" + g.itens.length + '</span></h3><div class="lista">' + g.itens.map((a) => {
+    return grupos.map((g) => '<h3 class="secao">' + esc(plural_funcao(g.nome)) + "<span>" + g.itens.length + '</span></h3><div class="lista">' + g.itens.map((a) => {
       const marcas = (a.video ? IC_VIDEO : "") + (a.analise || a.forte || a.vulneravel ? IC_TEXTO : "");
       return '<a class="atleta" href="#/e/' + encodeURIComponent(equipe.id) + "/" + encodeURIComponent(a.id) + '"' + (a.id === atletaId ? ' aria-current="true"' : "") + ">" +
         avatar(a, 120) + '<span class="txt"><b>' + esc(a.nome) + "</b><span>" + esc(linhaAtleta(a)) + "</span></span>" +
