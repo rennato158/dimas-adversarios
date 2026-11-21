@@ -212,8 +212,8 @@
       ? '<button class="botao' + (principal ? "" : " contorno") + '" data-abrir="' + esc(m.embed) + '" data-externo="' + esc(m.externo) + '" data-titulo="' + esc(rotulo + " — " + equipe.nome) + '">' + icone + rotulo + "</button>"
       : '<a class="botao' + (principal ? "" : " contorno") + '" target="_blank" rel="noopener" href="' + esc(m.externo) + '">' + icone + rotulo + "</a>";
     const funcoes = [...new Set(lista.map((x) => x.funcao))];
-    const filtros = funcoes.length > 1 ? '<div class="filtros" role="group" aria-label="Filtrar por função"><button class="chip" aria-pressed="true" data-filtro="">Todos</button>' +
-      funcoes.map((f) => '<button class="chip" aria-pressed="false" data-filtro="' + esc(f) + '">' + esc(f) + "</button>").join("") + "</div>" : "";
+    const filtros = funcoes.length > 1 ? '<label class="filtro-funcao"><span>Função</span><select id="filtro-funcao" aria-label="Filtrar por função"><option value="">Todas as funções</option>' +
+      funcoes.map((f) => '<option value="' + esc(f) + '">' + esc(f) + "</option>").join("") + "</select></label>" : "";
     tela.innerHTML = '<div class="equipe' + (a ? " com-atleta" : "") + '"><section class="col-lista">' +
       '<div class="heroi"><span class="escudo">' + arte(equipe.imagem, equipe.nome, 300) + '</span><h1 class="titulo">' + esc(equipe.nome) + "</h1><p>" + esc(equipe.competicao) + "</p></div>" +
       (rel || pre ? '<div class="acoes">' + acao(rel, "Relatório do adversário", IC_DOC, true) + acao(pre, "Análise do adversário", IC_VIDEO, !rel) + "</div>" : "") +
@@ -375,19 +375,19 @@
 
   /* ---------- eventos ---------- */
   document.addEventListener("click", (ev) => {
-    const el = ev.target.closest("[data-abrir],[data-tocar],[data-filtro],[data-fechar],[data-editar]");
+    const el = ev.target.closest("[data-abrir],[data-tocar],[data-fechar],[data-editar]");
     if (!el) return;
     if (el.dataset.editar) { abrirEditor(el.dataset.editar); return; }
     if (el.dataset.abrir) abrirJanela(el.dataset.abrir, el.dataset.externo, el.dataset.titulo);
     else if (el.dataset.tocar) el.parentElement.innerHTML = '<iframe src="' + esc(el.dataset.tocar) + '" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>';
     else if (el.hasAttribute("data-fechar")) fecharCamadas();
-    else if (el.hasAttribute("data-filtro")) {
-      estado.filtro = el.dataset.filtro;
-      tela.querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-pressed", String(c === el)));
-      const partes = location.hash.replace(/^#\/?/, "").split("/").map(decodeURIComponent);
-      const equipe = dados.equipes.find((e) => e.id === partes[1]);
-      if (equipe) $("#elenco").innerHTML = htmlElenco(equipe, atletasDa(equipe), partes[2] || "");
-    }
+  });
+  tela.addEventListener("change", (ev) => {
+    if (ev.target.id !== "filtro-funcao") return;
+    estado.filtro = ev.target.value;
+    const partes = location.hash.replace(/^#\/?/, "").split("/").map(decodeURIComponent);
+    const equipe = dados.equipes.find((e) => e.id === partes[1]);
+    if (equipe) $("#elenco").innerHTML = htmlElenco(equipe, atletasDa(equipe), partes[2] || "");
   });
   $("#abrir-busca").addEventListener("click", () => { $("#busca").classList.add("aberta"); const c = $("#campo-busca"); c.value = ""; buscar(""); c.focus(); });
   $("#campo-busca").addEventListener("input", (e) => buscar(e.target.value));
