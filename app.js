@@ -52,7 +52,7 @@
       const n = dados.equipes.filter((e) => e.competicaoId === c.id).length;
       return '<a class="cartao" href="#/c/' + encodeURIComponent(c.id) + '"><span class="arte">' + arte(c.imagem, c.nome, 400) + "</span><strong>" + esc(c.nome) + "</strong><small>" + (n ? plural(n, "equipe", "equipes") : "Sem equipes") + "</small></a>";
     }).join("");
-    tela.innerHTML = '<div class="cabecalho"><h1 class="titulo">Competições</h1></div>' +
+    tela.innerHTML = '<div class="cabecalho"><h1 class="titulo">Competições</h1>' + (ehAdmin() ? '<button type="button" class="botao contorno mini" data-acao="incluir-competicao">' + IC_MAIS + "Incluir competição</button>" : "") + "</div>" +
       (cartoes ? '<div class="grade">' + cartoes + "</div>" : '<div class="vazio">' + (estado.carregando ? "Carregando dados…" : "Nenhuma competição cadastrada ainda.") + "</div>") +
       '<p class="rodape">' + plural(dados.equipes.length, "equipe", "equipes") + " · " + plural(dados.atletas.length, "atleta", "atletas") + "<br>Atualizado em " + esc(dataHora(dados.publicadoEm)) + "</p>";
   }
@@ -67,7 +67,9 @@
     }).join("");
     const organizar = ehAdmin() && equipes.length > 1
       ? '<button class="botao contorno organizar" id="organizar" type="button">' + IC_MOVER + "<span>Organizar</span></button>" : "";
-    tela.innerHTML = '<div class="cabecalho"><h1 class="titulo">' + esc(c.nome) + '</h1><div class="cabecalho-lado"><small>' + plural(equipes.length, "equipe", "equipes") + "</small>" + organizar + "</div></div>" +
+    const admin = ehAdmin() ? '<div class="acoes-admin"><button type="button" class="botao contorno mini" data-acao="incluir-equipe" data-id="' + esc(c.id) + '">' + IC_MAIS + "Incluir equipe</button>" +
+      '<button type="button" class="botao contorno mini" data-acao="editar-competicao" data-id="' + esc(c.id) + '">' + IC_LAPIS + "Editar competição</button></div>" : "";
+    tela.innerHTML = '<div class="cabecalho"><h1 class="titulo">' + esc(c.nome) + '</h1><div class="cabecalho-lado"><small>' + plural(equipes.length, "equipe", "equipes") + "</small>" + organizar + "</div></div>" + admin +
       (organizar ? '<p class="dica-organizar" hidden>Arraste os clubes para mudar a ordem e toque em Concluir.</p>' : "") +
       (cartoes ? '<div class="grade equipes">' + cartoes + "</div>" : '<div class="vazio">Nenhuma equipe cadastrada nesta competição.</div>');
     if (organizar) $("#organizar").onclick = () => alternarOrganizar(c);
@@ -225,7 +227,7 @@
     const filtros = funcoes.length > 1 ? '<label class="filtro-funcao"><span>Função</span><select id="filtro-funcao" aria-label="Filtrar por função"><option value="">Todas as funções</option>' +
       funcoes.map((f) => '<option value="' + esc(f) + '">' + esc(f) + "</option>").join("") + "</select></label>" : "";
     tela.innerHTML = '<div class="equipe' + (a ? " com-atleta" : "") + '"><section class="col-lista">' +
-      '<div class="heroi"><span class="escudo">' + arte(equipe.imagem, equipe.nome, 300) + '</span><h1 class="titulo">' + esc(equipe.nome) + "</h1><p>" + esc(equipe.competicao) + "</p></div>" +
+      '<div class="heroi"><span class="escudo">' + arte(equipe.imagem, equipe.nome, 300) + '</span><h1 class="titulo">' + esc(equipe.nome) + "</h1><p>" + esc(equipe.competicao) + "</p>" + (ehAdmin() ? '<button type="button" class="botao contorno mini" data-acao="editar-equipe" data-id="' + esc(equipe.id) + '">' + IC_LAPIS + "Editar equipe</button>" : "") + "</div>" +
       (rel || pre ? '<div class="acoes">' + acao(rel, "Relatório do adversário", IC_DOC, true) + acao(pre, "Análise do adversário", IC_VIDEO, !rel) + "</div>" : "") +
       (lista.length ? numeros(lista) : "") +
       ((filtros || ehAdmin()) ? '<div class="linha-elenco">' + filtros + (ehAdmin() ? '<button type="button" class="botao contorno mini incluir-atleta" data-incluir="' + esc(equipe.id) + '">' + IC_MAIS + "Incluir atleta</button>" : "") + "</div>" : "") +
@@ -345,27 +347,14 @@
       if (tipo === "area") entrada = '<textarea id="' + id + '" data-campo="' + esc(nome) + '" rows="4">' + esc(v) + "</textarea>";
       else if (tipo === "funcao") entrada = '<select id="' + id + '" data-campo="' + esc(nome) + '"><option value="">—</option>' + opcoes(DIMAS.FUNCOES, v === "Sem função" ? "" : v) + "</select>";
       else if (tipo === "pe") entrada = '<select id="' + id + '" data-campo="' + esc(nome) + '"><option value="">—</option>' + opcoes(["Destro", "Canhoto", "Ambidestro"], v) + "</select>";
-      else if (tipo === "foto") {
-        const guardada = /^foto:/.test(v) ? v : "";
-        const busca = "https://www.google.com/search?tbm=isch&q=" + encodeURIComponent(a.nome + " " + equipe.nome + " jogador");
-        const previa = guardada ? '<img alt="" hidden data-foto="' + esc(guardada.slice(5)) + '" data-doc="' + esc("fotos-" + DIMAS.slug(a.equipe)) + '">' : (imagem(v, 200) ? '<img alt="" src="' + esc(imagem(v, 200)) + '">' : "");
-        entrada = '<div class="foto-editor"><div class="foto-previa" id="foto-previa">' + previa + '<span>' + esc(iniciais(a.nome)) + "</span></div>" +
-          '<div class="foto-campos"><input type="text" id="' + id + '" data-campo="' + esc(nome) + '" data-guardada="' + esc(guardada) + '" value="' + esc(guardada ? "" : v) + '" placeholder="' + (guardada ? "Foto guardada. Cole um link ou uma imagem para trocar" : "Cole o link ou a imagem aqui") + '" autocomplete="off">' +
-          '<div class="foto-botoes"><a class="botao contorno mini" target="_blank" rel="noopener" href="' + esc(busca) + '">' + IC_BUSCA_G + "Buscar no Google</a>" +
-          '<button type="button" class="botao contorno mini" id="foto-colar">' + IC_COLAR + "Colar imagem</button>" +
-          '<button type="button" class="botao contorno mini" id="foto-arquivo-botao">' + IC_ARQUIVO + 'Arquivo</button><input type="file" accept="image/*" id="foto-arquivo" hidden>' +
-          '<button type="button" class="botao contorno mini" id="foto-ajustar">' + IC_CORTE + 'Ajustar corte</button>' +
-          '<button type="button" class="botao contorno mini" id="foto-remover">Remover</button></div><small id="foto-aviso"></small>' +
-          '<div class="foto-corte" id="foto-corte" hidden><canvas id="foto-corte-tela" width="480" height="480" aria-label="Arraste para posicionar a foto"></canvas>' +
-          '<div class="foto-corte-controles"><span>Zoom</span><input type="range" id="foto-zoom" min="1" max="4" step="0.01" value="1" aria-label="Zoom da foto"><button type="button" class="botao mini" id="foto-corte-ok">Concluir corte</button></div></div></div></div>';
-      }
+      else if (tipo === "foto") entrada = campoImagemHtml({ id, nome, valor: v, doc: "fotos-" + DIMAS.slug(a.equipe), prefixo: "foto:", sigla: iniciais(a.nome || "?") });
       else entrada = '<input type="text" id="' + id + '" data-campo="' + esc(nome) + '" value="' + esc(v) + '" autocomplete="off">';
       return '<div class="' + (classe || "") + '"><label for="' + id + '">' + esc(rotulo) + "</label>" + entrada + "</div>";
     };
     caixa.innerHTML = '<form method="dialog" id="form-editor"><h2 class="titulo">' + (a.novo ? "Incluir atleta" : "Editar atleta") + '</h2><p class="suave">' + esc(equipe.nome + " · " + equipe.competicao) + '</p><div class="editor-grade">' + CAMPOS_EDICAO.map(campo).join("") +
       '</div><p class="entrada-erro" id="editor-erro" role="alert"></p><div class="editor-rodape">' + (a.novo ? "" : '<button type="button" class="botao contorno perigo" id="editor-excluir">Excluir atleta</button>') + '<button type="button" class="botao contorno" id="editor-cancelar">Cancelar</button><button type="submit" class="botao" id="editor-salvar">Salvar e publicar</button></div></form>';
     $("#editor-cancelar").onclick = () => caixa.close();
-    ligarFoto(caixa);
+    ligarFoto(caixa, () => (caixa.querySelector('[data-campo="Atleta"]').value + " " + equipe.nome + " jogador"));
     if ($("#editor-excluir")) $("#editor-excluir").onclick = () => excluirAtleta(a, equipe);
     $("#form-editor").onsubmit = (ev) => { ev.preventDefault(); salvarEdicao(a, equipe); };
     caixa.showModal();
@@ -374,7 +363,29 @@
     if (alvo) { alvo.focus(); alvo.scrollIntoView({ block: "center" }); }
   }
   /* ---------- foto do atleta no editor: link, colar, arquivo ---------- */
-  const fotoEditor = { dados: "", removida: false, fonte: null, z: 1, x: 0, y: 0 };
+  const fotoEditor = { dados: "", removida: false, fonte: null, z: 1, x: 0, y: 0, modo: "foto" };
+  // Campo de imagem do editor: link, colar, arquivo, Google, corte. prefixo "foto:" (atleta) ou "escudo:" (equipe/competição).
+  function campoImagemHtml({ id, nome, valor, doc, prefixo, sigla }) {
+    const guardada = valor && valor.startsWith(prefixo) ? valor : "";
+    const previa = guardada ? '<img alt="" hidden data-foto="' + esc(guardada.slice(prefixo.length)) + '" data-doc="' + esc(doc) + '">' : (imagem(valor, 200) ? '<img alt="" src="' + esc(imagem(valor, 200)) + '">' : "");
+    return '<div class="foto-editor' + (prefixo === "escudo:" ? " escudo" : "") + '"><div class="foto-previa" id="foto-previa">' + previa + "<span>" + esc(sigla) + "</span></div>" +
+      '<div class="foto-campos"><input type="text" id="' + id + '" data-campo="' + esc(nome) + '" data-imagem="1" data-prefixo="' + prefixo + '" data-doc="' + esc(doc) + '" data-original="' + esc(valor || "") + '" data-guardada="' + esc(guardada) + '" value="' + esc(guardada ? "" : valor || "") + '" placeholder="' + (guardada ? "Imagem guardada. Cole um link ou uma imagem para trocar" : "Cole o link ou a imagem aqui") + '" autocomplete="off">' +
+      '<div class="foto-botoes"><a class="botao contorno mini" target="_blank" rel="noopener" href="https://www.google.com/imghp">' + IC_BUSCA_G + "Buscar no Google</a>" +
+      '<button type="button" class="botao contorno mini" id="foto-colar">' + IC_COLAR + "Colar imagem</button>" +
+      '<button type="button" class="botao contorno mini" id="foto-arquivo-botao">' + IC_ARQUIVO + 'Arquivo</button><input type="file" accept="image/*" id="foto-arquivo" hidden>' +
+      '<button type="button" class="botao contorno mini" id="foto-ajustar">' + IC_CORTE + "Ajustar corte</button>" +
+      '<button type="button" class="botao contorno mini" id="foto-remover">Remover</button></div><small id="foto-aviso"></small>' +
+      '<div class="foto-corte" id="foto-corte" hidden><canvas id="foto-corte-tela" width="480" height="480" aria-label="Arraste para posicionar a imagem"></canvas>' +
+      '<div class="foto-corte-controles"><span>Zoom</span><input type="range" id="foto-zoom" min="1" max="4" step="0.01" value="1" aria-label="Zoom da imagem"><button type="button" class="botao mini" id="foto-corte-ok">Concluir corte</button></div></div></div></div>';
+  }
+  // Posição inicial: foto de atleta cobre o quadro (rosto no topo); escudo cabe inteiro no quadro.
+  function posicaoInicial(centralizar) {
+    const w = fotoEditor.fonte.naturalWidth, h = fotoEditor.fonte.naturalHeight;
+    fotoEditor.z = fotoEditor.modo === "escudo" ? Math.min(w, h) / Math.max(w, h) : 1;
+    const k = fotoEditor.z / Math.min(w, h), dw = w * k, dh = h * k; // tamanho relativo ao quadro (1 = lado)
+    fotoEditor.x = (1 - dw) / 2;
+    fotoEditor.y = fotoEditor.modo === "escudo" || centralizar || w >= h ? (1 - dh) / 2 : 0;
+  }
   // Carrega a imagem (arquivo colado ou link). Link só serve para recorte se o site permitir cópia.
   async function carregarImagem(fonte) {
     const img = new Image();
@@ -388,25 +399,26 @@
     const img = fotoEditor.fonte, lado = canvas.width, ctx = canvas.getContext("2d");
     const w = img.naturalWidth, h = img.naturalHeight, esc0 = lado / Math.min(w, h), k = esc0 * fotoEditor.z;
     const dw = w * k, dh = h * k;
-    fotoEditor.x = Math.min(0, Math.max((lado - dw) / lado, fotoEditor.x));
-    fotoEditor.y = Math.min(0, Math.max((lado - dh) / lado, fotoEditor.y));
-    ctx.fillStyle = "#262626"; ctx.fillRect(0, 0, lado, lado);
+    const prender = (p, d) => (d <= lado ? (lado - d) / 2 / lado : Math.min(0, Math.max((lado - d) / lado, p)));
+    fotoEditor.x = prender(fotoEditor.x, dw); fotoEditor.y = prender(fotoEditor.y, dh);
+    if (fotoEditor.modo === "escudo") ctx.clearRect(0, 0, lado, lado); // escudo com fundo transparente
+    else { ctx.fillStyle = "#262626"; ctx.fillRect(0, 0, lado, lado); }
     ctx.drawImage(img, fotoEditor.x * lado, fotoEditor.y * lado, dw, dh);
   }
   function fotoFinal() {
-    const c = document.createElement("canvas"); c.width = c.height = 480;
+    const escudo = fotoEditor.modo === "escudo", c = document.createElement("canvas"); c.width = c.height = escudo ? 320 : 480;
     desenharCorte(c);
-    return c.toDataURL("image/jpeg", 0.86); // falha se o site da imagem não permitir cópia
+    if (!escudo) return c.toDataURL("image/jpeg", 0.86); // falha se o site da imagem não permitir cópia
+    const webp = c.toDataURL("image/webp", 0.9);
+    return /^data:image\/webp/.test(webp) ? webp : c.toDataURL("image/png");
   }
   async function prepararFoto(fonte) { // usada ao salvar um link sem passar pelo recorte
-    fotoEditor.fonte = await carregarImagem(fonte); fotoEditor.z = 1;
-    const w = fotoEditor.fonte.naturalWidth, h = fotoEditor.fonte.naturalHeight;
-    fotoEditor.x = w > h ? -((w / h) - 1) / 2 : 0; fotoEditor.y = 0;
+    fotoEditor.fonte = await carregarImagem(fonte); posicaoInicial(false);
     return fotoFinal();
   }
-  function ligarFoto(caixa) {
-    const campo = caixa.querySelector('[data-campo="Imagem"]'); if (!campo) return;
-    Object.assign(fotoEditor, { dados: "", removida: false, fonte: null, z: 1, x: 0, y: 0 });
+  function ligarFoto(caixa, buscar) {
+    const campo = caixa.querySelector("[data-imagem]"); if (!campo) return;
+    Object.assign(fotoEditor, { dados: "", removida: false, fonte: null, z: 1, x: 0, y: 0, modo: campo.dataset.prefixo === "escudo:" ? "escudo" : "foto" });
     const previa = $("#foto-previa"), aviso = $("#foto-aviso"), corte = $("#foto-corte"), tela2 = $("#foto-corte-tela"), zoom = $("#foto-zoom");
     const mostrar = (src, msg) => { previa.querySelectorAll("img").forEach((i) => i.remove()); if (src) previa.insertAdjacentHTML("afterbegin", '<img alt="" src="' + esc(src) + '">'); aviso.textContent = msg || ""; };
     const atualizar = () => { desenharCorte(tela2); try { fotoEditor.dados = fotoFinal(); mostrar(fotoEditor.dados, "Arraste a imagem e use o zoom para acertar o corte."); } catch (e) { fotoEditor.dados = ""; aviso.textContent = "O site dessa imagem não permite recortar. Copie a imagem e use Colar imagem."; } };
@@ -414,9 +426,9 @@
     const usarImagem = async (fonte, centralizar) => {
       aviso.textContent = "Preparando a imagem…";
       try {
-        fotoEditor.fonte = await carregarImagem(fonte); fotoEditor.z = 1; fotoEditor.removida = false;
-        const w = fotoEditor.fonte.naturalWidth, h = fotoEditor.fonte.naturalHeight;
-        fotoEditor.x = w > h ? -((w / h) - 1) / 2 : 0; fotoEditor.y = centralizar && h > w ? -((h / w) - 1) / 2 : 0; // largura: centro; retrato: topo (rosto)
+        fotoEditor.fonte = await carregarImagem(fonte); fotoEditor.removida = false;
+        posicaoInicial(centralizar);
+        zoom.min = Math.min(1, fotoEditor.z).toFixed(2);
         if (typeof fonte !== "string" || /^data:/.test(fonte)) campo.value = "";
         abrirCorte();
       } catch (e) { aviso.textContent = typeof fonte === "string" ? "Não foi possível abrir esse link para recorte. Copie a imagem e use Colar imagem." : "Não foi possível ler essa imagem."; }
@@ -442,8 +454,8 @@
         aviso.textContent = "Nada para colar. Copie uma imagem (ou o link dela) e tente de novo.";
       } catch (e) { aviso.textContent = "O aparelho não liberou a área de transferência. Toque no campo acima e use Colar."; }
     };
-    const google = caixa.querySelector(".foto-botoes a"), nome = caixa.querySelector('[data-campo="Atleta"]');
-    if (google && nome) google.addEventListener("click", () => { google.href = "https://www.google.com/search?tbm=isch&q=" + encodeURIComponent((nome.value.trim() + " " + estado.equipe.nome + " jogador").trim()); });
+    const google = caixa.querySelector(".foto-botoes a");
+    if (google && buscar) google.addEventListener("click", () => { google.href = "https://www.google.com/search?tbm=isch&q=" + encodeURIComponent(buscar().trim()); });
     $("#foto-arquivo-botao").onclick = () => $("#foto-arquivo").click();
     $("#foto-arquivo").onchange = (ev) => { const f = ev.target.files && ev.target.files[0]; if (f) usarImagem(f); };
     $("#foto-remover").onclick = () => { Object.assign(fotoEditor, { dados: "", removida: true, fonte: null }); corte.hidden = true; campo.value = ""; campo.dataset.guardada = ""; mostrar("", "A foto será removida ao salvar."); };
@@ -472,19 +484,29 @@
       desenharCorte(tela2);
     };
     tela2.onpointerup = tela2.onpointercancel = () => { if (arrasto) { arrasto = null; atualizar(); } };
-    tela2.onwheel = (ev) => { if (!fotoEditor.fonte) return; ev.preventDefault(); zoom.value = Math.min(4, Math.max(1, fotoEditor.z * (ev.deltaY < 0 ? 1.08 : 1 / 1.08))); zoom.oninput(); };
+    tela2.onwheel = (ev) => { if (!fotoEditor.fonte) return; ev.preventDefault(); zoom.value = Math.min(4, Math.max(parseFloat(zoom.min), fotoEditor.z * (ev.deltaY < 0 ? 1.08 : 1 / 1.08))); zoom.oninput(); };
   }
-  // Grava a imagem no documento de fotos do elenco e devolve a referência "foto:chave".
-  async function guardarFoto(a, dadosImg, antiga) {
-    const doc = "fotos-" + DIMAS.slug(a.equipe);
+  // Grava a imagem no documento indicado pelo campo (fotos-<elenco> ou fotos-escudos) e devolve "foto:chave"/"escudo:chave".
+  async function guardarImagem(campo, base, dadosImg, antiga) {
+    const doc = campo.dataset.doc, prefixo = campo.dataset.prefixo;
     let pacote; try { pacote = await DIMAS.lerDoc(doc, true); } catch (e) { pacote = {}; }
     pacote.fotos = pacote.fotos || {};
-    if (antiga && /^foto:/.test(antiga)) delete pacote.fotos[antiga.slice(5)];
-    const chaveFoto = DIMAS.slug(a.nome) + "-" + Date.now().toString(36);
-    pacote.fotos[chaveFoto] = dadosImg;
+    if (antiga && antiga.startsWith(prefixo)) delete pacote.fotos[antiga.slice(prefixo.length)];
+    const chaveImg = DIMAS.slug(base || "imagem") + "-" + Date.now().toString(36);
+    pacote.fotos[chaveImg] = dadosImg;
     await DIMAS.gravarDoc(doc, pacote);
     delete fotosPorElenco[doc];
-    return "foto:" + chaveFoto;
+    return prefixo + chaveImg;
+  }
+  // Valor final do campo de imagem ao salvar: imagem nova guardada na base, link digitado, a guardada de antes ou vazio.
+  async function resolverImagem(campo, valor, base) {
+    if (!campo) return valor;
+    const guardada = campo.dataset.guardada || "";
+    let dadosImg = fotoEditor.dados;
+    if (!dadosImg && /^https?:\/\//.test(valor) && !DIMAS.driveId(valor) && valor !== campo.dataset.original) { try { dadosImg = await prepararFoto(valor); } catch (e) {} } // copia o link para a base quando o site deixa
+    if (dadosImg) return guardarImagem(campo, base, dadosImg, guardada || campo.dataset.original);
+    if (!valor && guardada && !fotoEditor.removida) return guardada;
+    return valor;
   }
   // Exclui o atleta do elenco (app publicado e rascunho do painel) e apaga a foto guardada dele.
   async function excluirAtleta(a, equipe) {
@@ -535,14 +557,7 @@
     if (a.novo && acharLinha(DIMAS.pacoteLocal(), a)) { erro.textContent = "Já existe um atleta com esse nome neste elenco."; return; }
     erro.textContent = ""; botao.disabled = true; botao.textContent = "Salvando…";
     try {
-      const campoFoto = document.querySelector('#form-editor [data-campo="Imagem"]');
-      if (campoFoto) {
-        const guardada = campoFoto.dataset.guardada || "";
-        let dadosImg = fotoEditor.dados;
-        if (!dadosImg && /^https?:\/\//.test(novos.Imagem) && !DIMAS.driveId(novos.Imagem)) { try { dadosImg = await prepararFoto(novos.Imagem); } catch (e) {} } // copia o link para a base quando o site deixa
-        if (dadosImg) novos.Imagem = await guardarFoto(a, dadosImg, guardada || (acharLinha(DIMAS.pacoteLocal(), a) || {}).Imagem);
-        else if (!novos.Imagem && guardada && !fotoEditor.removida) novos.Imagem = guardada;
-      }
+      novos.Imagem = await resolverImagem(document.querySelector("#form-editor [data-imagem]"), novos.Imagem, novos.Atleta);
       const publicado = await DIMAS.lerDoc("publicado", true); // parte sempre da versão mais recente
       const ok = aplicar(publicado);
       if (ok === "existe") throw new Error("já existe um atleta com esse nome neste elenco.");
@@ -563,11 +578,164 @@
     } finally { botao.disabled = false; botao.textContent = "Salvar e publicar"; }
   }
 
+  /* ---------- competições e equipes: incluir, editar e excluir (só administradores) ---------- */
+  // Formulário simples no mesmo diálogo do editor de atleta.
+  function abrirFormulario({ titulo, subtitulo, campos, buscar, salvar, excluir, rotuloExcluir }) {
+    let caixa = $("#editor");
+    if (!caixa) { caixa = document.createElement("dialog"); caixa.id = "editor"; caixa.className = "editor"; document.body.appendChild(caixa); }
+    const campo = (c, k) => {
+      const id = "fm" + k;
+      const entrada = c.tipo === "imagem"
+        ? campoImagemHtml({ id, nome: c.nome, valor: c.valor || "", doc: "fotos-escudos", prefixo: "escudo:", sigla: iniciais(c.sigla || "?") })
+        : '<input type="text" id="' + id + '" data-campo="' + esc(c.nome) + '" value="' + esc(c.valor || "") + '" placeholder="' + esc(c.dica || "") + '" autocomplete="off">';
+      return '<div class="larga"><label for="' + id + '">' + esc(c.rotulo) + "</label>" + entrada + "</div>";
+    };
+    caixa.innerHTML = '<form method="dialog" id="form-editor"><h2 class="titulo">' + esc(titulo) + "</h2>" + (subtitulo ? '<p class="suave">' + esc(subtitulo) + "</p>" : "") +
+      '<div class="editor-grade">' + campos.map(campo).join("") + '</div><p class="entrada-erro" id="editor-erro" role="alert"></p><div class="editor-rodape">' +
+      (excluir ? '<button type="button" class="botao contorno perigo" id="editor-excluir">' + esc(rotuloExcluir || "Excluir") + "</button>" : "") +
+      '<button type="button" class="botao contorno" id="editor-cancelar">Cancelar</button><button type="submit" class="botao" id="editor-salvar">Salvar e publicar</button></div></form>';
+    const erro = $("#editor-erro"), botao = $("#editor-salvar");
+    $("#editor-cancelar").onclick = () => caixa.close();
+    ligarFoto(caixa, buscar);
+    const falhou = (e, acao) => { erro.textContent = e.message === "Failed to fetch" ? "Sem internet. Nada foi " + acao + "." : "Não foi possível: " + e.message; };
+    $("#form-editor").onsubmit = async (ev) => {
+      ev.preventDefault();
+      const v = {}; caixa.querySelectorAll("[data-campo]").forEach((el) => { v[el.dataset.campo] = el.value.trim(); });
+      erro.textContent = ""; botao.disabled = true; botao.textContent = "Salvando…";
+      try { await salvar(v, caixa); caixa.close(); } catch (e) { falhou(e, "salvo"); } finally { botao.disabled = false; botao.textContent = "Salvar e publicar"; }
+    };
+    if (excluir) $("#editor-excluir").onclick = async () => {
+      const b = $("#editor-excluir"); erro.textContent = "";
+      try { b.disabled = true; if (await excluir()) caixa.close(); } catch (e) { falhou(e, "excluído"); } finally { b.disabled = false; }
+    };
+    caixa.showModal();
+    pintarFotos();
+    const primeiro = caixa.querySelector("[data-campo]"); if (primeiro) primeiro.focus();
+  }
+  // Aplica uma mudança no app publicado e no rascunho do painel e atualiza a tela.
+  async function mudarBase(mudar) {
+    const publicado = await DIMAS.lerDoc("publicado", true);
+    publicado.abas = publicado.abas || {};
+    mudar(publicado);
+    publicado.publicadoEm = new Date().toISOString();
+    await DIMAS.gravarDoc("publicado", publicado);
+    try { const rascunho = await DIMAS.lerDoc("rascunho", true); rascunho.abas = rascunho.abas || {}; mudar(rascunho); await DIMAS.gravarDoc("rascunho", rascunho); } catch (e) {} // mantém o painel em dia
+    DIMAS.guarda.gravar(DIMAS.CHAVES.dados, JSON.stringify(publicado));
+    dados = DIMAS.normalizar(publicado);
+    estado.equipeNaTela = "";
+  }
+  const aba = (pacote, nome) => (pacote.abas[nome] = pacote.abas[nome] || []);
+  const nomeComp = (l) => l["Competições"] || l["Competição"] || l["Campeonato"] || "";
+  const compDaEquipe = (l) => l["Competição"] || l["Competições"] || "";
+  const nomeTime = (l) => l.Time || l.Equipe || "";
+  const elencoDe = (l) => l.Elenco || nomeTime(l);
+  const ir = (destino) => { if (location.hash === destino) rota(); else location.hash = destino; };
+  // Tira as equipes indicadas e o elenco delas (se nenhuma outra equipe usar o mesmo elenco).
+  function tirarEquipes(pacote, remover) {
+    const equipes = aba(pacote, "EQUIPES"), saem = equipes.filter(remover), ficam = equipes.filter((l) => !remover(l));
+    pacote.abas["EQUIPES"] = ficam;
+    const emUso = new Set(ficam.map((l) => chave(elencoDe(l))));
+    const elencos = new Set(saem.map((l) => chave(elencoDe(l))).filter((k) => !emUso.has(k)));
+    const atletas = aba(pacote, "ADVERSÁRIOS");
+    pacote.abas["ADVERSÁRIOS"] = atletas.filter((a) => !elencos.has(chave(a["Adversário"] || "")));
+    return { equipes: saem.length, atletas: atletas.length - pacote.abas["ADVERSÁRIOS"].length };
+  }
+
+  function formCompeticao(c) {
+    const linha = c ? (aba(DIMAS.pacoteLocal(), "CAMPEONATOS").find((l) => DIMAS.slug(nomeComp(l)) === c.id) || {}) : {};
+    const nEquipes = c ? dados.equipes.filter((e) => e.competicaoId === c.id).length : 0;
+    abrirFormulario({
+      titulo: c ? "Editar competição" : "Incluir competição",
+      campos: [
+        { nome: "Competições", rotulo: "Nome da competição", valor: c ? c.nome : "", dica: "Ex.: Copa do Nordeste 2027" },
+        { nome: "Imagem Competições", rotulo: "Imagem da competição", tipo: "imagem", valor: linha["Imagem Competições"] || linha["Imagem"] || "", sigla: c ? c.nome : "?" },
+      ],
+      buscar: () => $("#fm0").value + " logo",
+      salvar: async (v, caixa) => {
+        const nome = v["Competições"]; if (!nome) throw new Error("informe o nome da competição.");
+        const novoId = DIMAS.slug(nome);
+        if (dados.competicoes.some((x) => x.id === novoId && (!c || x.id !== c.id))) throw new Error("já existe uma competição com esse nome.");
+        const img = await resolverImagem(caixa.querySelector("[data-imagem]"), v["Imagem Competições"], nome);
+        await mudarBase((p) => {
+          const lista = aba(p, "CAMPEONATOS");
+          if (!c) { lista.push({ "Competições": nome, "Imagem Competições": img }); return; }
+          const l = lista.find((x) => DIMAS.slug(nomeComp(x)) === c.id); if (!l) return;
+          const chaveNome = "Competições" in l ? "Competições" : "Competição" in l ? "Competição" : "Campeonato";
+          l[chaveNome] = nome; l["Imagem Competições"] = img; delete l["Imagem"];
+          if (nome !== c.nome) aba(p, "EQUIPES").forEach((e) => { if (DIMAS.slug(compDaEquipe(e)) === c.id) { if (!e.Elenco) e.Elenco = nomeTime(e); e["Competição"] = nome; } });
+        });
+        ir("#/c/" + encodeURIComponent(novoId));
+        aviso(c ? "Competição atualizada e publicada." : "Competição incluída. Agora inclua as equipes.");
+      },
+      rotuloExcluir: "Excluir competição",
+      excluir: c && (async () => {
+        const nAtletas = dados.atletas.filter((a) => dados.equipes.some((e) => e.competicaoId === c.id && e.elencoChave === a.equipeChave)).length;
+        if (!(await DIMAS.confirmar("Excluir a competição " + c.nome + "? Saem também " + plural(nEquipes, "equipe", "equipes") + " e os elencos delas (até " + plural(nAtletas, "atleta", "atletas") + "). Não dá para desfazer.", "Excluir"))) return false;
+        await mudarBase((p) => {
+          p.abas["CAMPEONATOS"] = aba(p, "CAMPEONATOS").filter((l) => DIMAS.slug(nomeComp(l)) !== c.id);
+          tirarEquipes(p, (l) => DIMAS.slug(compDaEquipe(l)) === c.id);
+        });
+        ir("#/"); aviso("Competição " + c.nome + " excluída.");
+        return true;
+      }),
+    });
+  }
+
+  function formEquipe(comp, e) {
+    const linha = e ? (aba(DIMAS.pacoteLocal(), "EQUIPES").find((l) => DIMAS.slug(compDaEquipe(l)) === e.competicaoId && DIMAS.slug(nomeTime(l)) === DIMAS.slug(e.nome)) || {}) : {};
+    abrirFormulario({
+      titulo: e ? "Editar equipe" : "Incluir equipe",
+      subtitulo: comp.nome,
+      campos: [
+        { nome: "Time", rotulo: "Nome da equipe", valor: e ? e.nome : "", dica: "Ex.: Fortaleza" },
+        { nome: "Time Imagem", rotulo: "Escudo", tipo: "imagem", valor: linha["Time Imagem"] || "", sigla: e ? e.nome : "?" },
+        { nome: "Relatório de Adversário", rotulo: "Relatório do adversário (link do Google Drive)", valor: linha["Relatório de Adversário"] || "" },
+        { nome: "Material de Pré-jogo 1", rotulo: "Análise do adversário (link do YouTube ou do Google Drive)", valor: linha["Material de Pré-jogo 1"] || "" },
+      ],
+      buscar: () => $("#fm0").value + " escudo",
+      salvar: async (v, caixa) => {
+        const nome = v.Time; if (!nome) throw new Error("informe o nome da equipe.");
+        const novoId = comp.id + "--" + DIMAS.slug(nome);
+        if (dados.equipes.some((x) => x.id === novoId && (!e || x.id !== e.id))) throw new Error("essa equipe já está nesta competição.");
+        const img = await resolverImagem(caixa.querySelector("[data-imagem]"), v["Time Imagem"], nome);
+        const campos = { Time: nome, "Time Imagem": img, "Relatório de Adversário": v["Relatório de Adversário"], "Material de Pré-jogo 1": v["Material de Pré-jogo 1"] };
+        await mudarBase((p) => {
+          const lista = aba(p, "EQUIPES");
+          if (!e) { lista.push(Object.assign({ "Competição": comp.nome, Elenco: nome + " · " + comp.nome }, campos)); return; }
+          const l = lista.find((x) => DIMAS.slug(compDaEquipe(x)) === e.competicaoId && DIMAS.slug(nomeTime(x)) === DIMAS.slug(e.nome)); if (!l) return;
+          if (!l.Elenco) l.Elenco = nomeTime(l); // mantém o elenco ligado à equipe ao trocar o nome
+          if ("Equipe" in l && !("Time" in l)) delete l.Equipe;
+          Object.assign(l, campos);
+        });
+        ir("#/e/" + encodeURIComponent(novoId));
+        aviso(e ? "Equipe atualizada e publicada." : "Equipe incluída. Agora inclua os atletas.");
+      },
+      rotuloExcluir: "Excluir equipe",
+      excluir: e && (async () => {
+        const n = dados.atletas.filter((a) => a.equipeChave === e.elencoChave).length;
+        const compartilhado = dados.equipes.some((x) => x.id !== e.id && x.elencoChave === e.elencoChave);
+        if (!(await DIMAS.confirmar("Excluir " + e.nome + " de " + comp.nome + "?" + (n && !compartilhado ? " Sai também o elenco (" + plural(n, "atleta", "atletas") + ")." : "") + " Não dá para desfazer.", "Excluir"))) return false;
+        await mudarBase((p) => { tirarEquipes(p, (l) => DIMAS.slug(compDaEquipe(l)) === e.competicaoId && DIMAS.slug(nomeTime(l)) === DIMAS.slug(e.nome)); });
+        ir("#/c/" + encodeURIComponent(comp.id)); aviso(e.nome + " excluída de " + comp.nome + ".");
+        return true;
+      }),
+    });
+  }
+
   /* ---------- eventos ---------- */
   document.addEventListener("click", (ev) => {
-    const el = ev.target.closest("[data-abrir],[data-tocar],[data-fechar],[data-editar],[data-incluir]");
+    const el = ev.target.closest("[data-abrir],[data-tocar],[data-fechar],[data-editar],[data-incluir],[data-acao]");
     if (!el) return;
     if (el.dataset.editar) { abrirEditor(el.dataset.editar); return; }
+    if (el.dataset.acao) {
+      if (!ehAdmin()) return;
+      const acao = el.dataset.acao, id = el.dataset.id;
+      if (acao === "incluir-competicao") formCompeticao(null);
+      else if (acao === "editar-competicao") formCompeticao(dados.competicoes.find((c) => c.id === id));
+      else if (acao === "incluir-equipe") formEquipe(dados.competicoes.find((c) => c.id === id), null);
+      else if (acao === "editar-equipe") { const e = dados.equipes.find((x) => x.id === id); if (e) formEquipe(dados.competicoes.find((c) => c.id === e.competicaoId) || { id: e.competicaoId, nome: e.competicao }, e); }
+      return;
+    }
     if (el.dataset.incluir) {
       const equipe = dados.equipes.find((e) => e.id === el.dataset.incluir); if (!equipe) return;
       estado.equipe = equipe; estado.atleta = { novo: true, nome: "", equipe: equipe.elenco, equipeChave: equipe.elencoChave };
