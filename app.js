@@ -183,13 +183,16 @@
     else video = '<section class="bloco"><h3>Vídeo</h3><div class="video-vazio"><span>Nenhum vídeo cadastrado.</span>' + (ehAdmin() ? '<button class="botao contorno" data-editar="Video">' + IC_VIDEO + "Adicionar vídeo</button>" : "") + "</div></section>";
     estado.atleta = a; estado.equipe = equipe;
     const ogol = midia(a.ogol);
-    const textos = bloco("Características individuais", a.analise) + bloco("Pontos fortes", a.forte, "forte") + bloco("Pontos vulneráveis", a.vulneravel, "fraco");
+    const pontos = bloco("Pontos fortes", a.forte, "forte") + bloco("Pontos vulneráveis", a.vulneravel, "fraco");
+    const textos = bloco("Características individuais", a.analise) + (pontos ? '<div class="pontos">' + pontos + "</div>" : "");
     const conteudo = video + (textos || '<div class="sem-analise">Análise individual ainda não cadastrada.' + (ehAdmin() ? ' <button class="link" data-editar="Análise Individual">Cadastrar agora</button>' : "") + "</div>");
     const dado = (r, val) => "<div><span>" + r + "</span><b>" + esc(val || "—") + "</b></div>";
-    return '<div class="ficha-topo">' + avatar(a, 400) + '<h2 class="titulo">' + esc(a.nome) + '</h2><span class="etiqueta">' + esc(a.funcao) + "</span><p>" + esc(equipe.nome) + "</p>" + (ehAdmin() ? '<button class="botao contorno editar-atleta" data-editar="Atleta">' + IC_LAPIS + "Editar atleta</button>" : "") + "</div>" +
+    const acoes = (ogol ? '<a class="botao contorno mini" target="_blank" rel="noopener" href="' + esc(ogol.externo) + '">' + IC_LINK + "Histórico no oGol</a>" : "") +
+      (ehAdmin() ? '<button class="botao contorno mini editar-atleta" data-editar="Atleta" title="Editar atleta">' + IC_LAPIS + "Editar</button>" : "");
+    return '<div class="ficha-topo">' + avatar(a, 400) + '<div class="ficha-id"><h2 class="titulo">' + esc(a.nome) + '</h2><p><span class="etiqueta">' + esc(a.funcao) + "</span><span>" + esc(equipe.nome) + "</span></p>" +
+      (acoes ? '<div class="ficha-acoes">' + acoes + "</div>" : "") + "</div></div>" +
       '<div class="tres">' + dado("Idade", a.idade ? a.idade + " anos" : "") + dado("Estatura", a.estatura) + dado("Pé dominante", a.pe) + "</div>" +
-      conteudo +
-      (ogol ? '<a class="botao contorno" style="margin-top:12px;width:100%;justify-content:center" target="_blank" rel="noopener" href="' + esc(ogol.externo) + '">' + IC_LINK + "Histórico no oGol</a>" : "");
+      conteudo;
   }
 
   function telaEquipe(equipeId, atletaId) {
