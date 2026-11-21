@@ -291,3 +291,9 @@ dialog.confirmacao p { margin: 0 0 18px; line-height: 1.5; }
 .foto-botoes .botao.mini svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 #foto-aviso { display: block; min-height: 16px; margin-top: 6px; font-size: 12px; color: var(--suave); }
 @media (max-width: 480px) { .foto-previa { width: 72px; height: 72px; } }
+.foto-corte { margin-top: 10px; padding: 12px; border: 1px solid var(--linha); border-radius: 12px; background: var(--fundo); }
+.foto-corte canvas { display: block; width: min(260px, 100%); aspect-ratio: 1; margin: 0 auto; border-radius: 12px; border: 2px solid #c8c8c8; cursor: grab; touch-action: none; }
+.foto-corte canvas:active { cursor: grabbing; }
+.foto-corte-controles { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.foto-corte-controles span { font-size: 12px; color: var(--suave); text-transform: uppercase; letter-spacing: 0.06em; }
+.foto-corte-controles input[type="range"] { flex: 1; min-height: 0; padding: 0; border: 0; background: none; accent-color: var(--roxo); }
