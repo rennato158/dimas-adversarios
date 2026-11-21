@@ -10,6 +10,7 @@
   const IC_BUSCA_G = '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>';
   const IC_COLAR = '<svg viewBox="0 0 24 24"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6"/></svg>';
   const IC_ARQUIVO = '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 8"/></svg>';
+  const IC_CORTE = '<svg viewBox="0 0 24 24"><path d="M6 2v14a2 2 0 0 0 2 2h14M2 6h14a2 2 0 0 1 2 2v14"/></svg>';
   const IC_MOVER = '<svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg>';
 
   const SETA = '<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>';
@@ -350,7 +351,10 @@
           '<div class="foto-botoes"><a class="botao contorno mini" target="_blank" rel="noopener" href="' + esc(busca) + '">' + IC_BUSCA_G + "Buscar no Google</a>" +
           '<button type="button" class="botao contorno mini" id="foto-colar">' + IC_COLAR + "Colar imagem</button>" +
           '<button type="button" class="botao contorno mini" id="foto-arquivo-botao">' + IC_ARQUIVO + 'Arquivo</button><input type="file" accept="image/*" id="foto-arquivo" hidden>' +
-          '<button type="button" class="botao contorno mini" id="foto-remover">Remover</button></div><small id="foto-aviso"></small></div></div>';
+          '<button type="button" class="botao contorno mini" id="foto-ajustar">' + IC_CORTE + 'Ajustar corte</button>' +
+          '<button type="button" class="botao contorno mini" id="foto-remover">Remover</button></div><small id="foto-aviso"></small>' +
+          '<div class="foto-corte" id="foto-corte" hidden><canvas id="foto-corte-tela" width="480" height="480" aria-label="Arraste para posicionar a foto"></canvas>' +
+          '<div class="foto-corte-controles"><span>Zoom</span><input type="range" id="foto-zoom" min="1" max="4" step="0.01" value="1" aria-label="Zoom da foto"><button type="button" class="botao mini" id="foto-corte-ok">Concluir corte</button></div></div></div></div>';
       }
       else entrada = '<input type="text" id="' + id + '" data-campo="' + esc(nome) + '" value="' + esc(v) + '" autocomplete="off">';
       return '<div class="' + (classe || "") + '"><label for="' + id + '">' + esc(rotulo) + "</label>" + entrada + "</div>";
@@ -366,34 +370,61 @@
     if (alvo) { alvo.focus(); alvo.scrollIntoView({ block: "center" }); }
   }
   /* ---------- foto do atleta no editor: link, colar, arquivo ---------- */
-  const fotoEditor = { dados: "", removida: false };
-  // Recorta em quadrado (topo da imagem, onde fica o rosto) e reduz para 480 px em JPEG.
-  async function prepararFoto(fonte) {
+  const fotoEditor = { dados: "", removida: false, fonte: null, z: 1, x: 0, y: 0 };
+  // Carrega a imagem (arquivo colado ou link). Link só serve para recorte se o site permitir cópia.
+  async function carregarImagem(fonte) {
     const img = new Image();
-    if (typeof fonte === "string") img.crossOrigin = "anonymous";
+    if (typeof fonte === "string" && !/^data:/.test(fonte)) img.crossOrigin = "anonymous";
     img.src = typeof fonte === "string" ? fonte : URL.createObjectURL(fonte);
     await img.decode();
-    const w = img.naturalWidth, h = img.naturalHeight, lado = Math.min(w, h), saida = Math.min(480, lado);
-    const tela2 = document.createElement("canvas"); tela2.width = tela2.height = saida;
-    const ctx = tela2.getContext("2d"); ctx.fillStyle = "#262626"; ctx.fillRect(0, 0, saida, saida);
-    ctx.drawImage(img, (w - lado) / 2, h > w ? 0 : (h - lado) / 2, lado, lado, 0, 0, saida, saida);
-    return tela2.toDataURL("image/jpeg", 0.86); // falha se o site da imagem não permitir cópia
+    return img;
+  }
+  // Desenha o recorte quadrado atual: z = zoom (1 = imagem cobrindo o quadro), x/y = deslocamento em fração do quadro.
+  function desenharCorte(canvas) {
+    const img = fotoEditor.fonte, lado = canvas.width, ctx = canvas.getContext("2d");
+    const w = img.naturalWidth, h = img.naturalHeight, esc0 = lado / Math.min(w, h), k = esc0 * fotoEditor.z;
+    const dw = w * k, dh = h * k;
+    fotoEditor.x = Math.min(0, Math.max((lado - dw) / lado, fotoEditor.x));
+    fotoEditor.y = Math.min(0, Math.max((lado - dh) / lado, fotoEditor.y));
+    ctx.fillStyle = "#262626"; ctx.fillRect(0, 0, lado, lado);
+    ctx.drawImage(img, fotoEditor.x * lado, fotoEditor.y * lado, dw, dh);
+  }
+  function fotoFinal() {
+    const c = document.createElement("canvas"); c.width = c.height = 480;
+    desenharCorte(c);
+    return c.toDataURL("image/jpeg", 0.86); // falha se o site da imagem não permitir cópia
+  }
+  async function prepararFoto(fonte) { // usada ao salvar um link sem passar pelo recorte
+    fotoEditor.fonte = await carregarImagem(fonte); fotoEditor.z = 1;
+    const w = fotoEditor.fonte.naturalWidth, h = fotoEditor.fonte.naturalHeight;
+    fotoEditor.x = w > h ? -((w / h) - 1) / 2 : 0; fotoEditor.y = 0;
+    return fotoFinal();
   }
   function ligarFoto(caixa) {
     const campo = caixa.querySelector('[data-campo="Imagem"]'); if (!campo) return;
-    fotoEditor.dados = ""; fotoEditor.removida = false;
-    const previa = $("#foto-previa"), aviso = $("#foto-aviso");
-    const mostrar = (src, msg) => { previa.querySelector("img") && previa.querySelector("img").remove(); if (src) previa.insertAdjacentHTML("afterbegin", '<img alt="" src="' + esc(src) + '">'); aviso.textContent = msg || ""; };
-    const usarImagem = async (blob) => {
+    Object.assign(fotoEditor, { dados: "", removida: false, fonte: null, z: 1, x: 0, y: 0 });
+    const previa = $("#foto-previa"), aviso = $("#foto-aviso"), corte = $("#foto-corte"), tela2 = $("#foto-corte-tela"), zoom = $("#foto-zoom");
+    const mostrar = (src, msg) => { previa.querySelectorAll("img").forEach((i) => i.remove()); if (src) previa.insertAdjacentHTML("afterbegin", '<img alt="" src="' + esc(src) + '">'); aviso.textContent = msg || ""; };
+    const atualizar = () => { desenharCorte(tela2); try { fotoEditor.dados = fotoFinal(); mostrar(fotoEditor.dados, "Arraste a imagem e use o zoom para acertar o corte."); } catch (e) { fotoEditor.dados = ""; aviso.textContent = "O site dessa imagem não permite recortar. Copie a imagem e use Colar imagem."; } };
+    const abrirCorte = () => { zoom.value = fotoEditor.z; corte.hidden = false; atualizar(); };
+    const usarImagem = async (fonte, centralizar) => {
       aviso.textContent = "Preparando a imagem…";
-      try { fotoEditor.dados = await prepararFoto(blob); fotoEditor.removida = false; campo.value = ""; mostrar(fotoEditor.dados, "Imagem pronta. Toque em Salvar e publicar."); }
-      catch (e) { aviso.textContent = "Não foi possível ler essa imagem."; }
+      try {
+        fotoEditor.fonte = await carregarImagem(fonte); fotoEditor.z = 1; fotoEditor.removida = false;
+        const w = fotoEditor.fonte.naturalWidth, h = fotoEditor.fonte.naturalHeight;
+        fotoEditor.x = w > h ? -((w / h) - 1) / 2 : 0; fotoEditor.y = centralizar && h > w ? -((h / w) - 1) / 2 : 0; // largura: centro; retrato: topo (rosto)
+        if (typeof fonte !== "string" || /^data:/.test(fonte)) campo.value = "";
+        abrirCorte();
+      } catch (e) { aviso.textContent = typeof fonte === "string" ? "Não foi possível abrir esse link para recorte. Copie a imagem e use Colar imagem." : "Não foi possível ler essa imagem."; }
     };
     campo.addEventListener("paste", (ev) => {
       const item = [...(ev.clipboardData ? ev.clipboardData.items : [])].find((i) => /^image\//.test(i.type));
       if (item) { ev.preventDefault(); usarImagem(item.getAsFile()); }
     });
-    campo.addEventListener("input", () => { fotoEditor.dados = ""; const u = campo.value.trim(); if (/^https?:\/\//.test(u)) mostrar(imagem(u, 200), "Link da imagem. Ao salvar, a foto é copiada para a base quando o site permitir."); });
+    campo.addEventListener("input", () => {
+      fotoEditor.dados = ""; fotoEditor.fonte = null; corte.hidden = true;
+      const u = campo.value.trim(); if (/^https?:\/\//.test(u)) mostrar(imagem(u, 200), "Link da imagem. Toque em Ajustar corte para enquadrar (se o site permitir).");
+    });
     $("#foto-colar").onclick = async () => {
       try {
         if (navigator.clipboard && navigator.clipboard.read) {
@@ -409,7 +440,33 @@
     };
     $("#foto-arquivo-botao").onclick = () => $("#foto-arquivo").click();
     $("#foto-arquivo").onchange = (ev) => { const f = ev.target.files && ev.target.files[0]; if (f) usarImagem(f); };
-    $("#foto-remover").onclick = () => { fotoEditor.dados = ""; fotoEditor.removida = true; campo.value = ""; campo.dataset.guardada = ""; mostrar("", "A foto será removida ao salvar."); };
+    $("#foto-remover").onclick = () => { Object.assign(fotoEditor, { dados: "", removida: true, fonte: null }); corte.hidden = true; campo.value = ""; campo.dataset.guardada = ""; mostrar("", "A foto será removida ao salvar."); };
+    // Ajustar corte: usa a imagem nova, o link digitado ou a foto já guardada.
+    $("#foto-ajustar").onclick = () => {
+      if (fotoEditor.fonte) return abrirCorte();
+      const u = campo.value.trim(), atual = previa.querySelector("img");
+      if (/^https?:\/\//.test(u)) return usarImagem(u, true);
+      if (atual && atual.src && !atual.hidden) return usarImagem(atual.src, true);
+      aviso.textContent = "Escolha uma imagem primeiro.";
+    };
+    $("#foto-corte-ok").onclick = () => { corte.hidden = true; if (fotoEditor.dados) aviso.textContent = "Corte pronto. Toque em Salvar e publicar."; };
+    zoom.oninput = () => {
+      // mantém o centro do quadro no mesmo ponto da imagem ao mudar o zoom
+      const z0 = fotoEditor.z, z1 = parseFloat(zoom.value), f = z1 / z0;
+      fotoEditor.x = 0.5 - (0.5 - fotoEditor.x) * f; fotoEditor.y = 0.5 - (0.5 - fotoEditor.y) * f; fotoEditor.z = z1;
+      atualizar();
+    };
+    let arrasto = null;
+    tela2.onpointerdown = (ev) => { if (!fotoEditor.fonte) return; ev.preventDefault(); tela2.setPointerCapture(ev.pointerId); arrasto = { id: ev.pointerId, px: ev.clientX, py: ev.clientY }; };
+    tela2.onpointermove = (ev) => {
+      if (!arrasto || ev.pointerId !== arrasto.id) return;
+      const lado = tela2.getBoundingClientRect().width;
+      fotoEditor.x += (ev.clientX - arrasto.px) / lado; fotoEditor.y += (ev.clientY - arrasto.py) / lado;
+      arrasto.px = ev.clientX; arrasto.py = ev.clientY;
+      desenharCorte(tela2);
+    };
+    tela2.onpointerup = tela2.onpointercancel = () => { if (arrasto) { arrasto = null; atualizar(); } };
+    tela2.onwheel = (ev) => { if (!fotoEditor.fonte) return; ev.preventDefault(); zoom.value = Math.min(4, Math.max(1, fotoEditor.z * (ev.deltaY < 0 ? 1.08 : 1 / 1.08))); zoom.oninput(); };
   }
   // Grava a imagem no documento de fotos do elenco e devolve a referência "foto:chave".
   async function guardarFoto(a, dadosImg, antiga) {
