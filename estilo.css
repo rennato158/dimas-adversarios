@@ -121,10 +121,10 @@ img[data-doc="fotos-escudos"] { padding: 17%; box-sizing: border-box; }
 .botao.contorno { background: transparent; border: 1px solid var(--linha); color: var(--texto); }
 .botao.contorno:hover { border-color: var(--roxo); }
 .botao svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
-.numeros { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 18px; }
-.numeros div { background: var(--painel); border: 1px solid var(--linha); border-radius: 12px; padding: 10px 6px; text-align: center; min-width: 0; }
+.numeros { display: flex; gap: 6px; margin-bottom: 18px; }
+.numeros div { flex: 1 1 auto; background: var(--painel); border: 1px solid var(--linha); border-radius: 12px; padding: 10px 6px; text-align: center; min-width: 0; }
 .numeros b { display: block; font-family: var(--titulo); font-weight: 400; font-size: 15px; font-variant-numeric: tabular-nums; }
-.numeros span { color: var(--suave); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+.numeros span { display: block; white-space: nowrap; color: var(--suave); font-size: 10px; text-transform: uppercase; letter-spacing: 0.03em; margin-top: 2px; }
 .filtros { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 12px; margin: 0 -16px; padding-left: 16px; padding-right: 16px; scrollbar-width: none; }
 .filtros::-webkit-scrollbar { display: none; }
 .chip { flex: none; min-height: 38px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--linha); color: var(--suave); font-size: 14px; font-weight: 600; white-space: nowrap; }
