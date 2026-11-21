@@ -99,7 +99,7 @@ window.DIMAS = (function () {
         estaturaCm: est.cm, estatura: est.texto,
         pe: c("Pé dominante", "Pé"), analise: c("Análise Individual", "Características Individuais"),
         forte: c("Ponto forte", "Pontos Fortes"), vulneravel: c("Ponto vulnerável", "Pontos Vulneráveis"),
-        ogol: c("Histórico (site oGol)", "Histórico", "oGol"), video: c("Video", "Vídeo"),
+        ogol: c("Histórico (site oGol)", "Histórico", "oGol"), video: c("Video", "Vídeo"), sofa: c("SofaScore"),
         imagem: c("Imagem", "Foto"), ordem: parseFloat(c("Ordem")) || ordemDa(funcao), linha: i,
       };
     }).filter((a) => a.nome && a.equipe);
