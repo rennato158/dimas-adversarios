@@ -263,3 +263,9 @@ dialog.confirmacao p { margin: 0 0 18px; line-height: 1.5; }
 .grade.organizando .cartao { cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; border-style: dashed; border-color: var(--roxo); }
 .grade.organizando .cartao img { pointer-events: none; -webkit-user-drag: none; }
 .grade.organizando .cartao.arrastando { cursor: grabbing; opacity: 0.55; transform: scale(1.04); box-shadow: 0 8px 24px rgba(0,0,0,.4); }
+
+/* Filtro de função (lista suspensa) */
+.filtro-funcao { display: flex; align-items: center; gap: 10px; margin: 2px 0 12px; }
+.filtro-funcao span { color: var(--suave); font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+.filtro-funcao select { flex: 1; min-width: 0; max-width: 320px; min-height: 42px; padding: 8px 40px 8px 14px; border-radius: 12px; border: 1px solid var(--linha); background: var(--painel) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239B65C5' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center / 18px; color: var(--texto); font: inherit; font-size: 16px; -webkit-appearance: none; appearance: none; cursor: pointer; }
+.filtro-funcao select:focus { outline: none; border-color: var(--roxo); }
