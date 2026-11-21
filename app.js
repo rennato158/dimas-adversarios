@@ -11,6 +11,7 @@
   const IC_COLAR = '<svg viewBox="0 0 24 24"><rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6"/></svg>';
   const IC_ARQUIVO = '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 8"/></svg>';
   const IC_CORTE = '<svg viewBox="0 0 24 24"><path d="M6 2v14a2 2 0 0 0 2 2h14M2 6h14a2 2 0 0 1 2 2v14"/></svg>';
+  const IC_MAIS = '<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>';
   const IC_MOVER = '<svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></svg>';
 
   const SETA = '<svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>';
@@ -131,7 +132,7 @@
       if (!aplicar(publicado)) throw new Error("competição não encontrada na base");
       publicado.publicadoEm = new Date().toISOString();
       await DIMAS.gravarDoc("publicado", publicado);
-      try { const rascunho = await DIMAS.lerDoc("rascunho", true); if (aplicar(rascunho)) await DIMAS.gravarDoc("rascunho", rascunho); } catch (e) {}
+      try { const rascunho = await DIMAS.lerDoc("rascunho", true); if (aplicar(rascunho) === true) await DIMAS.gravarDoc("rascunho", rascunho); } catch (e) {}
       DIMAS.guarda.gravar(DIMAS.CHAVES.dados, JSON.stringify(publicado));
       dados = DIMAS.normalizar(publicado);
       aviso("Nova ordem dos clubes publicada.");
@@ -226,7 +227,9 @@
     tela.innerHTML = '<div class="equipe' + (a ? " com-atleta" : "") + '"><section class="col-lista">' +
       '<div class="heroi"><span class="escudo">' + arte(equipe.imagem, equipe.nome, 300) + '</span><h1 class="titulo">' + esc(equipe.nome) + "</h1><p>" + esc(equipe.competicao) + "</p></div>" +
       (rel || pre ? '<div class="acoes">' + acao(rel, "Relatório do adversário", IC_DOC, true) + acao(pre, "Análise do adversário", IC_VIDEO, !rel) + "</div>" : "") +
-      (lista.length ? numeros(lista) + filtros + '<div id="elenco">' + htmlElenco(equipe, lista, atletaId) + "</div>" : '<div class="vazio so-celular">O elenco desta equipe ainda não foi cadastrado.</div>') +
+      (lista.length ? numeros(lista) : "") +
+      ((filtros || ehAdmin()) ? '<div class="linha-elenco">' + filtros + (ehAdmin() ? '<button type="button" class="botao contorno mini incluir-atleta" data-incluir="' + esc(equipe.id) + '">' + IC_MAIS + "Incluir atleta</button>" : "") + "</div>" : "") +
+      (lista.length ? '<div id="elenco">' + htmlElenco(equipe, lista, atletaId) + "</div>" : '<div class="vazio so-celular">O elenco desta equipe ainda não foi cadastrado.</div>') +
       '</section><section class="col-ficha">' + htmlFicha(equipe, lista, a) + "</section></div>";
     window.scrollTo(0, 0);
   }
@@ -332,7 +335,7 @@
   function abrirEditor(foco) {
     const a = estado.atleta, equipe = estado.equipe;
     if (!a || !ehAdmin()) return;
-    const atual = acharLinha(DIMAS.pacoteLocal(), a) || {};
+    const atual = a.novo ? { "Adversário": a.equipe } : acharLinha(DIMAS.pacoteLocal(), a) || {};
     let caixa = $("#editor");
     if (!caixa) { caixa = document.createElement("dialog"); caixa.id = "editor"; caixa.className = "editor"; document.body.appendChild(caixa); }
     const opcoes = (lista, v) => (v && !lista.some((x) => chave(x) === chave(v)) ? [v] : []).concat(lista).map((x) => "<option" + (chave(x) === chave(v) ? " selected" : "") + ">" + esc(x) + "</option>").join("");
@@ -359,11 +362,11 @@
       else entrada = '<input type="text" id="' + id + '" data-campo="' + esc(nome) + '" value="' + esc(v) + '" autocomplete="off">';
       return '<div class="' + (classe || "") + '"><label for="' + id + '">' + esc(rotulo) + "</label>" + entrada + "</div>";
     };
-    caixa.innerHTML = '<form method="dialog" id="form-editor"><h2 class="titulo">Editar atleta</h2><p class="suave">' + esc(equipe.nome + " · " + equipe.competicao) + '</p><div class="editor-grade">' + CAMPOS_EDICAO.map(campo).join("") +
-      '</div><p class="entrada-erro" id="editor-erro" role="alert"></p><div class="editor-rodape"><button type="button" class="botao contorno perigo" id="editor-excluir">Excluir atleta</button><button type="button" class="botao contorno" id="editor-cancelar">Cancelar</button><button type="submit" class="botao" id="editor-salvar">Salvar e publicar</button></div></form>';
+    caixa.innerHTML = '<form method="dialog" id="form-editor"><h2 class="titulo">' + (a.novo ? "Incluir atleta" : "Editar atleta") + '</h2><p class="suave">' + esc(equipe.nome + " · " + equipe.competicao) + '</p><div class="editor-grade">' + CAMPOS_EDICAO.map(campo).join("") +
+      '</div><p class="entrada-erro" id="editor-erro" role="alert"></p><div class="editor-rodape">' + (a.novo ? "" : '<button type="button" class="botao contorno perigo" id="editor-excluir">Excluir atleta</button>') + '<button type="button" class="botao contorno" id="editor-cancelar">Cancelar</button><button type="submit" class="botao" id="editor-salvar">Salvar e publicar</button></div></form>';
     $("#editor-cancelar").onclick = () => caixa.close();
     ligarFoto(caixa);
-    $("#editor-excluir").onclick = () => excluirAtleta(a, equipe);
+    if ($("#editor-excluir")) $("#editor-excluir").onclick = () => excluirAtleta(a, equipe);
     $("#form-editor").onsubmit = (ev) => { ev.preventDefault(); salvarEdicao(a, equipe); };
     caixa.showModal();
     pintarFotos();
@@ -439,6 +442,8 @@
         aviso.textContent = "Nada para colar. Copie uma imagem (ou o link dela) e tente de novo.";
       } catch (e) { aviso.textContent = "O aparelho não liberou a área de transferência. Toque no campo acima e use Colar."; }
     };
+    const google = caixa.querySelector(".foto-botoes a"), nome = caixa.querySelector('[data-campo="Atleta"]');
+    if (google && nome) google.addEventListener("click", () => { google.href = "https://www.google.com/search?tbm=isch&q=" + encodeURIComponent((nome.value.trim() + " " + estado.equipe.nome + " jogador").trim()); });
     $("#foto-arquivo-botao").onclick = () => $("#foto-arquivo").click();
     $("#foto-arquivo").onchange = (ev) => { const f = ev.target.files && ev.target.files[0]; if (f) usarImagem(f); };
     $("#foto-remover").onclick = () => { Object.assign(fotoEditor, { dados: "", removida: true, fonte: null }); corte.hidden = true; campo.value = ""; campo.dataset.guardada = ""; mostrar("", "A foto será removida ao salvar."); };
@@ -517,7 +522,17 @@
     if (novos.Video && !midia(novos.Video)) { erro.textContent = "O link do vídeo não parece válido. Use um link do YouTube ou do Google Drive."; return; }
     if (novos.Nascimento) novos.Idade = DIMAS.idadeDe(novos.Nascimento) + " Anos";
     novos.Ordem = String(DIMAS.ordemDa(novos["Função"]));
-    const aplicar = (pacote) => { const l = acharLinha(pacote, a); if (!l) return false; Object.assign(l, novos); return true; };
+    if (a.novo) { a.nome = novos.Atleta; novos["Adversário"] = a.equipe; }
+    const aplicar = (pacote) => {
+      if (a.novo) {
+        const lista = ((pacote.abas = pacote.abas || {})["ADVERSÁRIOS"] = pacote.abas["ADVERSÁRIOS"] || []);
+        if (acharLinha(pacote, a)) return "existe";
+        const linha = Object.fromEntries(Object.keys(lista[0] || {}).map((k) => [k, ""]));
+        lista.push(Object.assign(linha, novos)); return true;
+      }
+      const l = acharLinha(pacote, a); if (!l) return false; Object.assign(l, novos); return true;
+    };
+    if (a.novo && acharLinha(DIMAS.pacoteLocal(), a)) { erro.textContent = "Já existe um atleta com esse nome neste elenco."; return; }
     erro.textContent = ""; botao.disabled = true; botao.textContent = "Salvando…";
     try {
       const campoFoto = document.querySelector('#form-editor [data-campo="Imagem"]');
@@ -529,7 +544,9 @@
         else if (!novos.Imagem && guardada && !fotoEditor.removida) novos.Imagem = guardada;
       }
       const publicado = await DIMAS.lerDoc("publicado", true); // parte sempre da versão mais recente
-      if (!aplicar(publicado)) throw new Error("Este atleta não está mais na base. Atualize o app e tente de novo.");
+      const ok = aplicar(publicado);
+      if (ok === "existe") throw new Error("já existe um atleta com esse nome neste elenco.");
+      if (!ok) throw new Error("Este atleta não está mais na base. Atualize o app e tente de novo.");
       publicado.publicadoEm = new Date().toISOString();
       await DIMAS.gravarDoc("publicado", publicado);
       try { const rascunho = await DIMAS.lerDoc("rascunho", true); if (aplicar(rascunho)) await DIMAS.gravarDoc("rascunho", rascunho); } catch (e) {} // mantém o painel em dia
@@ -540,7 +557,7 @@
       estado.equipeNaTela = "";
       const destino = "#/e/" + encodeURIComponent(equipe.id) + "/" + encodeURIComponent(novoId);
       if (location.hash === destino) rota(); else location.hash = destino;
-      aviso("Atleta atualizado e publicado.");
+      aviso(a.novo ? "Atleta incluído e publicado." : "Atleta atualizado e publicado.");
     } catch (e) {
       erro.textContent = e.message === "Failed to fetch" ? "Sem internet. A edição não foi salva." : "Não foi possível salvar: " + e.message;
     } finally { botao.disabled = false; botao.textContent = "Salvar e publicar"; }
@@ -548,9 +565,14 @@
 
   /* ---------- eventos ---------- */
   document.addEventListener("click", (ev) => {
-    const el = ev.target.closest("[data-abrir],[data-tocar],[data-fechar],[data-editar]");
+    const el = ev.target.closest("[data-abrir],[data-tocar],[data-fechar],[data-editar],[data-incluir]");
     if (!el) return;
     if (el.dataset.editar) { abrirEditor(el.dataset.editar); return; }
+    if (el.dataset.incluir) {
+      const equipe = dados.equipes.find((e) => e.id === el.dataset.incluir); if (!equipe) return;
+      estado.equipe = equipe; estado.atleta = { novo: true, nome: "", equipe: equipe.elenco, equipeChave: equipe.elencoChave };
+      abrirEditor("Atleta"); return;
+    }
     if (el.dataset.abrir) abrirJanela(el.dataset.abrir, el.dataset.externo, el.dataset.titulo);
     else if (el.dataset.tocar) el.parentElement.innerHTML = '<iframe src="' + esc(el.dataset.tocar) + '" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>';
     else if (el.hasAttribute("data-fechar")) fecharCamadas();
