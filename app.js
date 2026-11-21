@@ -168,7 +168,6 @@
       return '<div class="escolha"><div><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><p>' +
         (lista.length ? "Selecione um atleta para ver a ficha." : "O elenco desta equipe ainda não foi cadastrado.") + "</p></div></div>";
     }
-    const i = lista.indexOf(a), ant = lista[i - 1], prox = lista[i + 1];
     const itens = (t) => t.split(/\n|;/).map((x) => x.replace(/^[\s\-•·]+/, "").trim()).filter(Boolean);
     const bloco = (titulo, texto, classe) => {
       if (!texto) return "";
@@ -184,13 +183,11 @@
     const ogol = midia(a.ogol);
     const textos = bloco("Características individuais", a.analise) + bloco("Pontos fortes", a.forte, "forte") + bloco("Pontos vulneráveis", a.vulneravel, "fraco");
     const conteudo = video + (textos || '<div class="sem-analise">Análise individual ainda não cadastrada.' + (ehAdmin() ? ' <button class="link" data-editar="Análise Individual">Cadastrar agora</button>' : "") + "</div>");
-    const passo = (x, rotulo) => x ? '<a class="botao contorno" href="#/e/' + encodeURIComponent(equipe.id) + "/" + encodeURIComponent(x.id) + '" aria-label="' + rotulo + ": " + esc(x.nome) + '"><span>' + (rotulo === "Anterior" ? "‹ " : "") + esc(x.nome) + (rotulo === "Próximo" ? " ›" : "") + "</span></a>" : '<span class="botao contorno" style="visibility:hidden"></span>';
     const dado = (r, val) => "<div><span>" + r + "</span><b>" + esc(val || "—") + "</b></div>";
     return '<div class="ficha-topo">' + avatar(a, 400) + '<h2 class="titulo">' + esc(a.nome) + '</h2><span class="etiqueta">' + esc(a.funcao) + "</span><p>" + esc(equipe.nome) + "</p>" + (ehAdmin() ? '<button class="botao contorno editar-atleta" data-editar="Atleta">' + IC_LAPIS + "Editar atleta</button>" : "") + "</div>" +
       '<div class="tres">' + dado("Idade", a.idade ? a.idade + " anos" : "") + dado("Estatura", a.estatura) + dado("Pé dominante", a.pe) + "</div>" +
       conteudo +
-      (ogol ? '<a class="botao contorno" style="margin-top:12px;width:100%;justify-content:center" target="_blank" rel="noopener" href="' + esc(ogol.externo) + '">' + IC_LINK + "Histórico no oGol</a>" : "") +
-      '<div class="passos">' + passo(ant, "Anterior") + passo(prox, "Próximo") + "</div>";
+      (ogol ? '<a class="botao contorno" style="margin-top:12px;width:100%;justify-content:center" target="_blank" rel="noopener" href="' + esc(ogol.externo) + '">' + IC_LINK + "Histórico no oGol</a>" : "");
   }
 
   function telaEquipe(equipeId, atletaId) {
